@@ -1,0 +1,5805 @@
+body:
+  children:
+  - $ref: '#/groups/0'
+  - $ref: '#/texts/1'
+  - $ref: '#/texts/2'
+  - $ref: '#/texts/3'
+  - $ref: '#/texts/4'
+  - $ref: '#/groups/1'
+  - $ref: '#/texts/14'
+  - $ref: '#/texts/15'
+  - $ref: '#/texts/16'
+  - $ref: '#/texts/17'
+  - $ref: '#/groups/2'
+  - $ref: '#/texts/22'
+  - $ref: '#/texts/23'
+  - $ref: '#/texts/24'
+  - $ref: '#/groups/3'
+  - $ref: '#/texts/30'
+  - $ref: '#/texts/31'
+  - $ref: '#/texts/32'
+  - $ref: '#/texts/33'
+  - $ref: '#/groups/4'
+  - $ref: '#/groups/5'
+  - $ref: '#/texts/40'
+  - $ref: '#/texts/41'
+  - $ref: '#/texts/42'
+  - $ref: '#/texts/43'
+  - $ref: '#/groups/6'
+  - $ref: '#/texts/47'
+  - $ref: '#/texts/48'
+  - $ref: '#/texts/49'
+  - $ref: '#/groups/7'
+  - $ref: '#/texts/54'
+  - $ref: '#/groups/8'
+  - $ref: '#/groups/9'
+  - $ref: '#/texts/61'
+  - $ref: '#/texts/62'
+  - $ref: '#/texts/63'
+  - $ref: '#/texts/64'
+  - $ref: '#/groups/10'
+  - $ref: '#/groups/11'
+  - $ref: '#/groups/12'
+  - $ref: '#/pictures/0'
+  - $ref: '#/texts/87'
+  - $ref: '#/pictures/1'
+  - $ref: '#/pictures/2'
+  - $ref: '#/groups/13'
+  - $ref: '#/pictures/3'
+  - $ref: '#/pictures/4'
+  - $ref: '#/pictures/5'
+  - $ref: '#/groups/14'
+  - $ref: '#/pictures/6'
+  - $ref: '#/pictures/7'
+  - $ref: '#/texts/211'
+  - $ref: '#/pictures/8'
+  - $ref: '#/texts/225'
+  - $ref: '#/texts/226'
+  - $ref: '#/texts/227'
+  - $ref: '#/texts/228'
+  - $ref: '#/texts/229'
+  - $ref: '#/texts/230'
+  - $ref: '#/texts/231'
+  - $ref: '#/texts/232'
+  - $ref: '#/texts/233'
+  - $ref: '#/texts/234'
+  - $ref: '#/texts/235'
+  - $ref: '#/texts/236'
+  - $ref: '#/groups/15'
+  - $ref: '#/texts/240'
+  - $ref: '#/texts/241'
+  - $ref: '#/texts/242'
+  - $ref: '#/texts/243'
+  - $ref: '#/texts/244'
+  - $ref: '#/texts/245'
+  - $ref: '#/texts/246'
+  - $ref: '#/texts/247'
+  - $ref: '#/groups/16'
+  - $ref: '#/groups/17'
+  - $ref: '#/texts/250'
+  - $ref: '#/texts/251'
+  - $ref: '#/texts/252'
+  - $ref: '#/texts/253'
+  content_layer: body
+  label: unspecified
+  name: _root_
+  self_ref: '#/body'
+form_items: []
+furniture:
+  children: []
+  content_layer: furniture
+  label: unspecified
+  name: _root_
+  self_ref: '#/furniture'
+groups:
+- children:
+  - $ref: '#/texts/0'
+  content_layer: body
+  label: key_value_area
+  name: group
+  parent:
+    $ref: '#/body'
+  self_ref: '#/groups/0'
+- children:
+  - $ref: '#/texts/5'
+  - $ref: '#/texts/6'
+  - $ref: '#/texts/7'
+  - $ref: '#/texts/8'
+  - $ref: '#/texts/9'
+  - $ref: '#/texts/10'
+  - $ref: '#/texts/11'
+  - $ref: '#/texts/12'
+  - $ref: '#/texts/13'
+  content_layer: body
+  label: list
+  name: list
+  parent:
+    $ref: '#/body'
+  self_ref: '#/groups/1'
+- children:
+  - $ref: '#/texts/18'
+  - $ref: '#/texts/19'
+  - $ref: '#/texts/20'
+  - $ref: '#/texts/21'
+  content_layer: body
+  label: list
+  name: list
+  parent:
+    $ref: '#/body'
+  self_ref: '#/groups/2'
+- children:
+  - $ref: '#/texts/25'
+  - $ref: '#/texts/26'
+  - $ref: '#/texts/27'
+  - $ref: '#/texts/28'
+  - $ref: '#/texts/29'
+  content_layer: body
+  label: list
+  name: list
+  parent:
+    $ref: '#/body'
+  self_ref: '#/groups/3'
+- children:
+  - $ref: '#/texts/34'
+  - $ref: '#/texts/37'
+  - $ref: '#/texts/38'
+  - $ref: '#/texts/39'
+  content_layer: body
+  label: list
+  name: list
+  parent:
+    $ref: '#/body'
+  self_ref: '#/groups/4'
+- children:
+  - $ref: '#/texts/35'
+  - $ref: '#/texts/36'
+  content_layer: body
+  label: key_value_area
+  name: group
+  parent:
+    $ref: '#/body'
+  self_ref: '#/groups/5'
+- children:
+  - $ref: '#/texts/44'
+  - $ref: '#/texts/45'
+  - $ref: '#/texts/46'
+  content_layer: body
+  label: list
+  name: list
+  parent:
+    $ref: '#/body'
+  self_ref: '#/groups/6'
+- children:
+  - $ref: '#/texts/50'
+  - $ref: '#/texts/51'
+  - $ref: '#/texts/52'
+  - $ref: '#/texts/53'
+  content_layer: body
+  label: list
+  name: list
+  parent:
+    $ref: '#/body'
+  self_ref: '#/groups/7'
+- children:
+  - $ref: '#/texts/55'
+  - $ref: '#/texts/56'
+  - $ref: '#/texts/57'
+  - $ref: '#/texts/58'
+  content_layer: body
+  label: list
+  name: list
+  parent:
+    $ref: '#/body'
+  self_ref: '#/groups/8'
+- children:
+  - $ref: '#/texts/59'
+  - $ref: '#/texts/60'
+  content_layer: body
+  label: key_value_area
+  name: group
+  parent:
+    $ref: '#/body'
+  self_ref: '#/groups/9'
+- children:
+  - $ref: '#/texts/65'
+  - $ref: '#/texts/66'
+  - $ref: '#/texts/67'
+  - $ref: '#/texts/68'
+  - $ref: '#/texts/69'
+  content_layer: body
+  label: list
+  name: list
+  parent:
+    $ref: '#/body'
+  self_ref: '#/groups/10'
+- children:
+  - $ref: '#/texts/70'
+  content_layer: body
+  label: key_value_area
+  name: group
+  parent:
+    $ref: '#/body'
+  self_ref: '#/groups/11'
+- children:
+  - $ref: '#/texts/71'
+  - $ref: '#/texts/72'
+  content_layer: body
+  label: key_value_area
+  name: group
+  parent:
+    $ref: '#/body'
+  self_ref: '#/groups/12'
+- children:
+  - $ref: '#/texts/124'
+  - $ref: '#/texts/125'
+  content_layer: body
+  label: key_value_area
+  name: group
+  parent:
+    $ref: '#/body'
+  self_ref: '#/groups/13'
+- children:
+  - $ref: '#/texts/181'
+  - $ref: '#/texts/182'
+  content_layer: body
+  label: key_value_area
+  name: group
+  parent:
+    $ref: '#/body'
+  self_ref: '#/groups/14'
+- children:
+  - $ref: '#/texts/237'
+  - $ref: '#/texts/238'
+  - $ref: '#/texts/239'
+  content_layer: body
+  label: list
+  name: list
+  parent:
+    $ref: '#/body'
+  self_ref: '#/groups/15'
+- children:
+  - $ref: '#/texts/248'
+  content_layer: body
+  label: key_value_area
+  name: group
+  parent:
+    $ref: '#/body'
+  self_ref: '#/groups/16'
+- children:
+  - $ref: '#/texts/249'
+  content_layer: body
+  label: key_value_area
+  name: group
+  parent:
+    $ref: '#/body'
+  self_ref: '#/groups/17'
+key_value_items: []
+name: DL_ASS2_24MAI0087
+origin:
+  binary_hash: 6325781209132381892
+  filename: DL_ASS2_24MAI0087.pdf
+  mimetype: application/pdf
+pages:
+  '1':
+    page_no: 1
+    size:
+      height: 841.9199829101562
+      width: 595.2000122070312
+  '10':
+    page_no: 10
+    size:
+      height: 841.9199829101562
+      width: 595.2000122070312
+  '2':
+    page_no: 2
+    size:
+      height: 841.9199829101562
+      width: 595.2000122070312
+  '3':
+    page_no: 3
+    size:
+      height: 841.9199829101562
+      width: 595.2000122070312
+  '4':
+    page_no: 4
+    size:
+      height: 841.9199829101562
+      width: 595.2000122070312
+  '5':
+    page_no: 5
+    size:
+      height: 841.9199829101562
+      width: 595.2000122070312
+  '6':
+    page_no: 6
+    size:
+      height: 841.9199829101562
+      width: 595.2000122070312
+  '7':
+    page_no: 7
+    size:
+      height: 841.9199829101562
+      width: 595.2000122070312
+  '8':
+    page_no: 8
+    size:
+      height: 841.9199829101562
+      width: 595.2000122070312
+  '9':
+    page_no: 9
+    size:
+      height: 841.9199829101562
+      width: 595.2000122070312
+pictures:
+- annotations: []
+  captions: []
+  children:
+  - $ref: '#/texts/73'
+  - $ref: '#/texts/74'
+  - $ref: '#/texts/75'
+  - $ref: '#/texts/76'
+  - $ref: '#/texts/77'
+  - $ref: '#/texts/78'
+  - $ref: '#/texts/79'
+  - $ref: '#/texts/80'
+  - $ref: '#/texts/81'
+  - $ref: '#/texts/82'
+  - $ref: '#/texts/83'
+  - $ref: '#/texts/84'
+  - $ref: '#/texts/85'
+  - $ref: '#/texts/86'
+  content_layer: body
+  footnotes: []
+  label: picture
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 467.95745849609375
+      coord_origin: BOTTOMLEFT
+      l: 70.84100341796875
+      r: 523.8983764648438
+      t: 770.193603515625
+    charspan:
+    - 0
+    - 0
+    page_no: 5
+  references: []
+  self_ref: '#/pictures/0'
+- annotations: []
+  captions: []
+  children:
+  - $ref: '#/texts/88'
+  - $ref: '#/texts/89'
+  - $ref: '#/texts/90'
+  - $ref: '#/texts/91'
+  - $ref: '#/texts/92'
+  - $ref: '#/texts/93'
+  - $ref: '#/texts/94'
+  - $ref: '#/texts/95'
+  - $ref: '#/texts/96'
+  - $ref: '#/texts/97'
+  - $ref: '#/texts/98'
+  - $ref: '#/texts/99'
+  - $ref: '#/texts/100'
+  - $ref: '#/texts/101'
+  - $ref: '#/texts/102'
+  content_layer: body
+  footnotes: []
+  label: picture
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 266.99383544921875
+      coord_origin: BOTTOMLEFT
+      l: 71.05274963378906
+      r: 524.0469970703125
+      t: 411.4985046386719
+    charspan:
+    - 0
+    - 0
+    page_no: 5
+  references: []
+  self_ref: '#/pictures/1'
+- annotations: []
+  captions: []
+  children:
+  - $ref: '#/texts/103'
+  - $ref: '#/texts/104'
+  - $ref: '#/texts/105'
+  - $ref: '#/texts/106'
+  - $ref: '#/texts/107'
+  - $ref: '#/texts/108'
+  - $ref: '#/texts/109'
+  - $ref: '#/texts/110'
+  - $ref: '#/texts/111'
+  - $ref: '#/texts/112'
+  - $ref: '#/texts/113'
+  - $ref: '#/texts/114'
+  - $ref: '#/texts/115'
+  - $ref: '#/texts/116'
+  - $ref: '#/texts/117'
+  - $ref: '#/texts/118'
+  - $ref: '#/texts/119'
+  - $ref: '#/texts/120'
+  - $ref: '#/texts/121'
+  - $ref: '#/texts/122'
+  - $ref: '#/texts/123'
+  content_layer: body
+  footnotes: []
+  label: picture
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 75.22796630859375
+      coord_origin: BOTTOMLEFT
+      l: 71.20877838134766
+      r: 524.1370849609375
+      t: 257.63067626953125
+    charspan:
+    - 0
+    - 0
+    page_no: 5
+  references: []
+  self_ref: '#/pictures/2'
+- annotations: []
+  captions: []
+  children:
+  - $ref: '#/texts/126'
+  - $ref: '#/texts/127'
+  - $ref: '#/texts/128'
+  - $ref: '#/texts/129'
+  - $ref: '#/texts/130'
+  - $ref: '#/texts/131'
+  - $ref: '#/texts/132'
+  - $ref: '#/texts/133'
+  - $ref: '#/texts/134'
+  - $ref: '#/texts/135'
+  - $ref: '#/texts/136'
+  - $ref: '#/texts/137'
+  - $ref: '#/texts/138'
+  - $ref: '#/texts/139'
+  content_layer: body
+  footnotes: []
+  label: picture
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 611.0112762451172
+      coord_origin: BOTTOMLEFT
+      l: 71.26862335205078
+      r: 524.3087158203125
+      t: 770.5773239135742
+    charspan:
+    - 0
+    - 0
+    page_no: 6
+  references: []
+  self_ref: '#/pictures/3'
+- annotations: []
+  captions: []
+  children:
+  - $ref: '#/texts/140'
+  - $ref: '#/texts/141'
+  - $ref: '#/texts/142'
+  - $ref: '#/texts/143'
+  - $ref: '#/texts/144'
+  - $ref: '#/texts/145'
+  - $ref: '#/texts/146'
+  - $ref: '#/texts/147'
+  - $ref: '#/texts/148'
+  - $ref: '#/texts/149'
+  - $ref: '#/texts/150'
+  - $ref: '#/texts/151'
+  - $ref: '#/texts/152'
+  content_layer: body
+  footnotes: []
+  label: picture
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 467.9429626464844
+      coord_origin: BOTTOMLEFT
+      l: 71.11915588378906
+      r: 524.2559204101562
+      t: 601.7485809326172
+    charspan:
+    - 0
+    - 0
+    page_no: 6
+  references: []
+  self_ref: '#/pictures/4'
+- annotations: []
+  captions: []
+  children:
+  - $ref: '#/texts/153'
+  - $ref: '#/texts/154'
+  - $ref: '#/texts/155'
+  - $ref: '#/texts/156'
+  - $ref: '#/texts/157'
+  - $ref: '#/texts/158'
+  - $ref: '#/texts/159'
+  - $ref: '#/texts/160'
+  - $ref: '#/texts/161'
+  - $ref: '#/texts/162'
+  - $ref: '#/texts/163'
+  - $ref: '#/texts/164'
+  - $ref: '#/texts/165'
+  - $ref: '#/texts/166'
+  - $ref: '#/texts/167'
+  - $ref: '#/texts/168'
+  - $ref: '#/texts/169'
+  - $ref: '#/texts/170'
+  - $ref: '#/texts/171'
+  - $ref: '#/texts/172'
+  - $ref: '#/texts/173'
+  - $ref: '#/texts/174'
+  - $ref: '#/texts/175'
+  - $ref: '#/texts/176'
+  - $ref: '#/texts/177'
+  - $ref: '#/texts/178'
+  - $ref: '#/texts/179'
+  - $ref: '#/texts/180'
+  content_layer: body
+  footnotes: []
+  label: picture
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 268.2200927734375
+      coord_origin: BOTTOMLEFT
+      l: 70.9376449584961
+      r: 524.2206420898438
+      t: 459.24578857421875
+    charspan:
+    - 0
+    - 0
+    page_no: 6
+  references: []
+  self_ref: '#/pictures/5'
+- annotations: []
+  captions: []
+  children:
+  - $ref: '#/texts/183'
+  - $ref: '#/texts/184'
+  - $ref: '#/texts/185'
+  - $ref: '#/texts/186'
+  - $ref: '#/texts/187'
+  - $ref: '#/texts/188'
+  - $ref: '#/texts/189'
+  - $ref: '#/texts/190'
+  - $ref: '#/texts/191'
+  - $ref: '#/texts/192'
+  - $ref: '#/texts/193'
+  - $ref: '#/texts/194'
+  - $ref: '#/texts/195'
+  - $ref: '#/texts/196'
+  - $ref: '#/texts/197'
+  - $ref: '#/texts/198'
+  - $ref: '#/texts/199'
+  - $ref: '#/texts/200'
+  - $ref: '#/texts/201'
+  - $ref: '#/texts/202'
+  - $ref: '#/texts/203'
+  - $ref: '#/texts/204'
+  - $ref: '#/texts/205'
+  - $ref: '#/texts/206'
+  - $ref: '#/texts/207'
+  - $ref: '#/texts/208'
+  - $ref: '#/texts/209'
+  content_layer: body
+  footnotes: []
+  label: picture
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 578.7179565429688
+      coord_origin: BOTTOMLEFT
+      l: 71.3302993774414
+      r: 524.0897216796875
+      t: 770.825325012207
+    charspan:
+    - 0
+    - 0
+    page_no: 7
+  references: []
+  self_ref: '#/pictures/6'
+- annotations: []
+  captions: []
+  children:
+  - $ref: '#/texts/210'
+  content_layer: body
+  footnotes: []
+  label: picture
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 381.7755432128906
+      coord_origin: BOTTOMLEFT
+      l: 70.91775512695312
+      r: 524.3406982421875
+      t: 569.3673400878906
+    charspan:
+    - 0
+    - 0
+    page_no: 7
+  references: []
+  self_ref: '#/pictures/7'
+- annotations: []
+  captions: []
+  children:
+  - $ref: '#/texts/212'
+  - $ref: '#/texts/213'
+  - $ref: '#/texts/214'
+  - $ref: '#/texts/215'
+  - $ref: '#/texts/216'
+  - $ref: '#/texts/217'
+  - $ref: '#/texts/218'
+  - $ref: '#/texts/219'
+  - $ref: '#/texts/220'
+  - $ref: '#/texts/221'
+  - $ref: '#/texts/222'
+  - $ref: '#/texts/223'
+  - $ref: '#/texts/224'
+  content_layer: body
+  footnotes: []
+  label: picture
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 437.49237060546875
+      coord_origin: BOTTOMLEFT
+      l: 75.4288558959961
+      r: 519.2250366210938
+      t: 762.969123840332
+    charspan:
+    - 0
+    - 0
+    page_no: 8
+  references: []
+  self_ref: '#/pictures/8'
+schema_name: DoclingDocument
+tables: []
+texts:
+- children: []
+  content_layer: body
+  label: page_header
+  orig: 'NAME: JASWANTH REDDY REG NO: 24MAI0087'
+  parent:
+    $ref: '#/groups/0'
+  prov:
+  - bbox:
+      b: 781.7319946289062
+      coord_origin: BOTTOMLEFT
+      l: 373.9159851074219
+      r: 523.1240234375
+      t: 804.0640258789062
+    charspan:
+    - 0
+    - 38
+    page_no: 1
+  self_ref: '#/texts/0'
+  text: 'NAME: JASWANTH REDDY REG NO: 24MAI0087'
+- children: []
+  content_layer: body
+  label: section_header
+  level: 1
+  orig: "Deep Learning \u2013 DA 2 \u2013 \u2013 Question Paper"
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 722.2827758789062
+      coord_origin: BOTTOMLEFT
+      l: 160.5990447998047
+      r: 434.59893798828125
+      t: 736.8030395507812
+    charspan:
+    - 0
+    - 39
+    page_no: 1
+  self_ref: '#/texts/1'
+  text: "Deep Learning \u2013 DA 2 \u2013 \u2013 Question Paper"
+- children: []
+  content_layer: body
+  label: text
+  orig: The student has to execute the below algorithms and present them in the DA
+    with the points mentioned below.
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 676.905029296875
+      coord_origin: BOTTOMLEFT
+      l: 72.1075210571289
+      r: 499.34033203125
+      t: 708.3897094726562
+    charspan:
+    - 0
+    - 107
+    page_no: 1
+  self_ref: '#/texts/2'
+  text: The student has to execute the below algorithms and present them in the DA
+    with the points mentioned below.
+- children: []
+  content_layer: body
+  label: text
+  orig: 'Question-DA2: Measuring Bias and Fairness Designing Fair AI systems, Legal
+    and ethical considerations Mitigating Bias and implementing Cultural implications
+    of AI using Real time scenario.'
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 612.7772216796875
+      coord_origin: BOTTOMLEFT
+      l: 72.28848266601562
+      r: 509.92022705078125
+      t: 662.5669555664062
+    charspan:
+    - 0
+    - 188
+    page_no: 1
+  self_ref: '#/texts/3'
+  text: 'Question-DA2: Measuring Bias and Fairness Designing Fair AI systems, Legal
+    and ethical considerations Mitigating Bias and implementing Cultural implications
+    of AI using Real time scenario.'
+- children: []
+  content_layer: body
+  label: section_header
+  level: 1
+  orig: 'Points to cover in DA:'
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 588.9490356445312
+      coord_origin: BOTTOMLEFT
+      l: 75.97200012207031
+      r: 205.90127563476562
+      t: 598.7069702148438
+    charspan:
+    - 0
+    - 22
+    page_no: 1
+  self_ref: '#/texts/4'
+  text: 'Points to cover in DA:'
+- children: []
+  content_layer: body
+  enumerated: false
+  label: list_item
+  marker: ''
+  orig: "\uF0B7 Theoretical presentation of each topic/sub-topic mentioned in the\
+    \ question"
+  parent:
+    $ref: '#/groups/1'
+  prov:
+  - bbox:
+      b: 540.0550537109375
+      coord_origin: BOTTOMLEFT
+      l: 108.77384185791016
+      r: 490.35198974609375
+      t: 571.5697021484375
+    charspan:
+    - 0
+    - 76
+    page_no: 1
+  self_ref: '#/texts/5'
+  text: "\uF0B7 Theoretical presentation of each topic/sub-topic mentioned in the\
+    \ question"
+- children: []
+  content_layer: body
+  enumerated: false
+  label: list_item
+  marker: ''
+  orig: "\uF0B7 Strengths and weaknesses of the algorithms/ techniques"
+  parent:
+    $ref: '#/groups/1'
+  prov:
+  - bbox:
+      b: 512.4271850585938
+      coord_origin: BOTTOMLEFT
+      l: 108.77384185791016
+      r: 436.8836669921875
+      t: 525.2196655273438
+    charspan:
+    - 0
+    - 56
+    page_no: 1
+  self_ref: '#/texts/6'
+  text: "\uF0B7 Strengths and weaknesses of the algorithms/ techniques"
+- children: []
+  content_layer: body
+  enumerated: false
+  label: list_item
+  marker: ''
+  orig: "\uF0B7 Algorithms, flow charts, and Coding"
+  parent:
+    $ref: '#/groups/1'
+  prov:
+  - bbox:
+      b: 484.5871887207031
+      coord_origin: BOTTOMLEFT
+      l: 108.77384185791016
+      r: 330.92584228515625
+      t: 497.3796691894531
+    charspan:
+    - 0
+    - 37
+    page_no: 1
+  self_ref: '#/texts/7'
+  text: "\uF0B7 Algorithms, flow charts, and Coding"
+- children: []
+  content_layer: body
+  enumerated: false
+  label: list_item
+  marker: ''
+  orig: "\uF0B7 Execution results including Screenshots like input and outputs for\
+    \ each algorithm"
+  parent:
+    $ref: '#/groups/1'
+  prov:
+  - bbox:
+      b: 438.2471923828125
+      coord_origin: BOTTOMLEFT
+      l: 108.77384185791016
+      r: 494.27581787109375
+      t: 469.7596740722656
+    charspan:
+    - 0
+    - 83
+    page_no: 1
+  self_ref: '#/texts/8'
+  text: "\uF0B7 Execution results including Screenshots like input and outputs for\
+    \ each algorithm"
+- children: []
+  content_layer: body
+  enumerated: false
+  label: list_item
+  marker: ''
+  orig: "\uF0B7 Max. number of pages: As per the required, no limitation."
+  parent:
+    $ref: '#/groups/1'
+  prov:
+  - bbox:
+      b: 410.647216796875
+      coord_origin: BOTTOMLEFT
+      l: 108.77384185791016
+      r: 447.1705322265625
+      t: 423.439697265625
+    charspan:
+    - 0
+    - 59
+    page_no: 1
+  self_ref: '#/texts/9'
+  text: "\uF0B7 Max. number of pages: As per the required, no limitation."
+- children: []
+  content_layer: body
+  enumerated: false
+  label: list_item
+  marker: ''
+  orig: "\uF0B7 Programming Language: Any programming language for coding can be used\
+    \ as per the student's choice"
+  parent:
+    $ref: '#/groups/1'
+  prov:
+  - bbox:
+      b: 364.33502197265625
+      coord_origin: BOTTOMLEFT
+      l: 108.77384185791016
+      r: 510.24200439453125
+      t: 395.8396911621094
+    charspan:
+    - 0
+    - 99
+    page_no: 1
+  self_ref: '#/texts/10'
+  text: "\uF0B7 Programming Language: Any programming language for coding can be used\
+    \ as per the student's choice"
+- children: []
+  content_layer: body
+  enumerated: false
+  label: list_item
+  marker: ''
+  orig: "\uF0B7 Last date for submission in VTOP (Check in VTOP)"
+  parent:
+    $ref: '#/groups/1'
+  prov:
+  - bbox:
+      b: 336.73504638671875
+      coord_origin: BOTTOMLEFT
+      l: 108.77384185791016
+      r: 418.1473388671875
+      t: 349.49969482421875
+    charspan:
+    - 0
+    - 50
+    page_no: 1
+  self_ref: '#/texts/11'
+  text: "\uF0B7 Last date for submission in VTOP (Check in VTOP)"
+- children: []
+  content_layer: body
+  enumerated: false
+  label: list_item
+  marker: ''
+  orig: "\uF0B7 Give proper conclusion and references"
+  parent:
+    $ref: '#/groups/1'
+  prov:
+  - bbox:
+      b: 309.1350402832031
+      coord_origin: BOTTOMLEFT
+      l: 108.77384185791016
+      r: 341.28106689453125
+      t: 321.8996887207031
+    charspan:
+    - 0
+    - 39
+    page_no: 1
+  self_ref: '#/texts/12'
+  text: "\uF0B7 Give proper conclusion and references"
+- children: []
+  content_layer: body
+  enumerated: false
+  label: list_item
+  marker: ''
+  orig: "\uF0B7 No plagiarism"
+  parent:
+    $ref: '#/groups/1'
+  prov:
+  - bbox:
+      b: 281.4772033691406
+      coord_origin: BOTTOMLEFT
+      l: 108.77384185791016
+      r: 205.65847778320312
+      t: 294.2696838378906
+    charspan:
+    - 0
+    - 15
+    page_no: 1
+  self_ref: '#/texts/13'
+  text: "\uF0B7 No plagiarism"
+- children: []
+  content_layer: body
+  label: section_header
+  level: 1
+  orig: 1.1 Measuring Bias and Fairness
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 232.69000244140625
+      coord_origin: BOTTOMLEFT
+      l: 72.81600189208984
+      r: 238.3799591064453
+      t: 243.5260009765625
+    charspan:
+    - 0
+    - 31
+    page_no: 1
+  self_ref: '#/texts/14'
+  text: 1.1 Measuring Bias and Fairness
+- children: []
+  content_layer: body
+  label: text
+  orig: Bias in artificial intelligence systems refers to systematic and unfair discrimination
+    that leads to unjust or unequal outcomes, particularly against certain groups
+    defined by characteristics such as gender, race, age, or income. Measuring bias
+    is the first essential step in creating ethical, trustworthy, and fair AI systems.
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 160.91000366210938
+      coord_origin: BOTTOMLEFT
+      l: 72.14400482177734
+      r: 517.6079711914062
+      t: 219.93800354003906
+    charspan:
+    - 0
+    - 327
+    page_no: 1
+  self_ref: '#/texts/15'
+  text: Bias in artificial intelligence systems refers to systematic and unfair discrimination
+    that leads to unjust or unequal outcomes, particularly against certain groups
+    defined by characteristics such as gender, race, age, or income. Measuring bias
+    is the first essential step in creating ethical, trustworthy, and fair AI systems.
+- children: []
+  content_layer: body
+  label: text
+  orig: Bias is typically detected by observing how predictions vary across different
+    groups. If a machine learning model favors one group more than another in terms
+    of accuracy, outcomes, or benefits, it is considered biased.
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 105.54800415039062
+      coord_origin: BOTTOMLEFT
+      l: 72.12000274658203
+      r: 516.0239868164062
+      t: 147.93800354003906
+    charspan:
+    - 0
+    - 218
+    page_no: 1
+  self_ref: '#/texts/16'
+  text: Bias is typically detected by observing how predictions vary across different
+    groups. If a machine learning model favors one group more than another in terms
+    of accuracy, outcomes, or benefits, it is considered biased.
+- children: []
+  content_layer: body
+  label: section_header
+  level: 1
+  orig: 'Common metrics for measuring bias:'
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 756.0399780273438
+      coord_origin: BOTTOMLEFT
+      l: 72.5040054321289
+      r: 261.80401611328125
+      t: 766.8759765625
+    charspan:
+    - 0
+    - 34
+    page_no: 2
+  self_ref: '#/texts/17'
+  text: 'Common metrics for measuring bias:'
+- children: []
+  content_layer: body
+  enumerated: false
+  label: list_item
+  marker: ''
+  orig: "\uF0B7 Selection Rate: Measures the rate at which different groups receive\
+    \ positive outcomes."
+  parent:
+    $ref: '#/groups/2'
+  prov:
+  - bbox:
+      b: 718.6240234375
+      coord_origin: BOTTOMLEFT
+      l: 90.54816436767578
+      r: 473.68798828125
+      t: 743.3079833984375
+    charspan:
+    - 0
+    - 88
+    page_no: 2
+  self_ref: '#/texts/18'
+  text: "\uF0B7 Selection Rate: Measures the rate at which different groups receive\
+    \ positive outcomes."
+- children: []
+  content_layer: body
+  enumerated: false
+  label: list_item
+  marker: ''
+  orig: "\uF0B7 True Positive Rate (TPR): Measures the percentage of actual positives\
+    \ correctly identified, segmented by group."
+  parent:
+    $ref: '#/groups/2'
+  prov:
+  - bbox:
+      b: 676.3299560546875
+      coord_origin: BOTTOMLEFT
+      l: 90.54816436767578
+      r: 498.02801513671875
+      t: 703.43798828125
+    charspan:
+    - 0
+    - 113
+    page_no: 2
+  self_ref: '#/texts/19'
+  text: "\uF0B7 True Positive Rate (TPR): Measures the percentage of actual positives\
+    \ correctly identified, segmented by group."
+- children: []
+  content_layer: body
+  enumerated: false
+  label: list_item
+  marker: ''
+  orig: "\uF0B7 False Positive Rate (FPR): Measures the percentage of actual negatives\
+    \ incorrectly identified as positive, segmented by group."
+  parent:
+    $ref: '#/groups/2'
+  prov:
+  - bbox:
+      b: 636.25
+      coord_origin: BOTTOMLEFT
+      l: 90.54816436767578
+      r: 511.7320556640625
+      t: 663.3579711914062
+    charspan:
+    - 0
+    - 128
+    page_no: 2
+  self_ref: '#/texts/20'
+  text: "\uF0B7 False Positive Rate (FPR): Measures the percentage of actual negatives\
+    \ incorrectly identified as positive, segmented by group."
+- children: []
+  content_layer: body
+  enumerated: false
+  label: list_item
+  marker: ''
+  orig: "\uF0B7 Disparate Impact: Measures the ratio of outcomes between protected\
+    \ and unprotected groups, ideally close to 1."
+  parent:
+    $ref: '#/groups/2'
+  prov:
+  - bbox:
+      b: 596.3899536132812
+      coord_origin: BOTTOMLEFT
+      l: 90.54816436767578
+      r: 465.1779479980469
+      t: 623.2579956054688
+    charspan:
+    - 0
+    - 112
+    page_no: 2
+  self_ref: '#/texts/21'
+  text: "\uF0B7 Disparate Impact: Measures the ratio of outcomes between protected\
+    \ and unprotected groups, ideally close to 1."
+- children: []
+  content_layer: body
+  label: text
+  orig: These metrics help quantify whether the model ' s decisions are fair and balanced
+    across different demographics.
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 556.3099975585938
+      coord_origin: BOTTOMLEFT
+      l: 72.38400268554688
+      r: 489.9119873046875
+      t: 583.41796875
+    charspan:
+    - 0
+    - 112
+    page_no: 2
+  self_ref: '#/texts/22'
+  text: These metrics help quantify whether the model ' s decisions are fair and balanced
+    across different demographics.
+- children: []
+  content_layer: body
+  label: section_header
+  level: 1
+  orig: 1.2 Designing Fair AI Systems
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 508.0400085449219
+      coord_origin: BOTTOMLEFT
+      l: 72.81600189208984
+      r: 224.760009765625
+      t: 518.8759765625
+    charspan:
+    - 0
+    - 29
+    page_no: 2
+  self_ref: '#/texts/23'
+  text: 1.2 Designing Fair AI Systems
+- children: []
+  content_layer: body
+  label: text
+  orig: 'Designing fair AI systems involves a multi-stage strategy that starts from
+    data acquisition and ends at model deployment. At every stage, potential bias
+    must be identified and mitigated. Critical considerations in the design process
+    include:'
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 452.34002685546875
+      coord_origin: BOTTOMLEFT
+      l: 72.2280044555664
+      r: 521.1400146484375
+      t: 495.5480041503906
+    charspan:
+    - 0
+    - 241
+    page_no: 2
+  self_ref: '#/texts/24'
+  text: 'Designing fair AI systems involves a multi-stage strategy that starts from
+    data acquisition and ends at model deployment. At every stage, potential bias
+    must be identified and mitigated. Critical considerations in the design process
+    include:'
+- children: []
+  content_layer: body
+  enumerated: false
+  label: list_item
+  marker: ''
+  orig: "\uF0B7 Balanced and Representative Datasets: Data should be collected in\
+    \ a way that represents all classes and groups to avoid historical discrimination."
+  parent:
+    $ref: '#/groups/3'
+  prov:
+  - bbox:
+      b: 412.5
+      coord_origin: BOTTOMLEFT
+      l: 90.54816436767578
+      r: 492.40802001953125
+      t: 439.3680114746094
+    charspan:
+    - 0
+    - 148
+    page_no: 2
+  self_ref: '#/texts/25'
+  text: "\uF0B7 Balanced and Representative Datasets: Data should be collected in\
+    \ a way that represents all classes and groups to avoid historical discrimination."
+- children: []
+  content_layer: body
+  enumerated: false
+  label: list_item
+  marker: ''
+  orig: "\uF0B7 Feature Selection: Care must be taken to avoid using sensitive or\
+    \ proxy features (like zip code as a proxy for race)."
+  parent:
+    $ref: '#/groups/3'
+  prov:
+  - bbox:
+      b: 372.4000244140625
+      coord_origin: BOTTOMLEFT
+      l: 90.54816436767578
+      r: 520.4979858398438
+      t: 399.5279846191406
+    charspan:
+    - 0
+    - 119
+    page_no: 2
+  self_ref: '#/texts/26'
+  text: "\uF0B7 Feature Selection: Care must be taken to avoid using sensitive or\
+    \ proxy features (like zip code as a proxy for race)."
+- children: []
+  content_layer: body
+  enumerated: false
+  label: list_item
+  marker: ''
+  orig: "\uF0B7 Algorithm Choice: Use fairness-aware algorithms or include fairness\
+    \ constraints."
+  parent:
+    $ref: '#/groups/3'
+  prov:
+  - bbox:
+      b: 348.4000244140625
+      coord_origin: BOTTOMLEFT
+      l: 90.54816436767578
+      r: 500.2359619140625
+      t: 359.4280090332031
+    charspan:
+    - 0
+    - 82
+    page_no: 2
+  self_ref: '#/texts/27'
+  text: "\uF0B7 Algorithm Choice: Use fairness-aware algorithms or include fairness\
+    \ constraints."
+- children: []
+  content_layer: body
+  enumerated: false
+  label: list_item
+  marker: ''
+  orig: "\uF0B7 Evaluation Metrics: Evaluate both accuracy and fairness metrics."
+  parent:
+    $ref: '#/groups/3'
+  prov:
+  - bbox:
+      b: 324.4000244140625
+      coord_origin: BOTTOMLEFT
+      l: 90.54816436767578
+      r: 425.12200927734375
+      t: 335.4280090332031
+    charspan:
+    - 0
+    - 66
+    page_no: 2
+  self_ref: '#/texts/28'
+  text: "\uF0B7 Evaluation Metrics: Evaluate both accuracy and fairness metrics."
+- children: []
+  content_layer: body
+  enumerated: false
+  label: list_item
+  marker: ''
+  orig: "\uF0B7 Post -deployment Monitoring: AI should be monitored for drift in fairness\
+    \ over time."
+  parent:
+    $ref: '#/groups/3'
+  prov:
+  - bbox:
+      b: 300.4000244140625
+      coord_origin: BOTTOMLEFT
+      l: 90.54816436767578
+      r: 519.1480102539062
+      t: 311.4280090332031
+    charspan:
+    - 0
+    - 86
+    page_no: 2
+  self_ref: '#/texts/29'
+  text: "\uF0B7 Post -deployment Monitoring: AI should be monitored for drift in fairness\
+    \ over time."
+- children: []
+  content_layer: body
+  label: text
+  orig: One popular strategy is to use pre-processing , in -processing, and post-processing
+    fairness techniques. These approaches remove or reduce bias from datasets, models,
+    and predictions respectively.
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 244.4499969482422
+      coord_origin: BOTTOMLEFT
+      l: 72.09600067138672
+      r: 511.7619934082031
+      t: 287.63800048828125
+    charspan:
+    - 0
+    - 196
+    page_no: 2
+  self_ref: '#/texts/30'
+  text: One popular strategy is to use pre-processing , in -processing, and post-processing
+    fairness techniques. These approaches remove or reduce bias from datasets, models,
+    and predictions respectively.
+- children: []
+  content_layer: body
+  label: section_header
+  level: 1
+  orig: 1.3 Legal and Ethical Considerations
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 196.42999267578125
+      coord_origin: BOTTOMLEFT
+      l: 72.81600189208984
+      r: 260.447998046875
+      t: 207.2659912109375
+    charspan:
+    - 0
+    - 36
+    page_no: 2
+  self_ref: '#/texts/31'
+  text: 1.3 Legal and Ethical Considerations
+- children: []
+  content_layer: body
+  label: text
+  orig: Legal frameworks such as the European Union's General Data Protection Regulation
+    (GDPR), the Equal Credit Opportunity Act, and industry-specific compliance laws
+    (like HIPAA in healthcare) demand fair, transparent, and accountable AI systems.
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 140.50999450683594
+      coord_origin: BOTTOMLEFT
+      l: 72.2280044555664
+      r: 492.7039794921875
+      t: 183.697998046875
+    charspan:
+    - 0
+    - 241
+    page_no: 2
+  self_ref: '#/texts/32'
+  text: Legal frameworks such as the European Union's General Data Protection Regulation
+    (GDPR), the Equal Credit Opportunity Act, and industry-specific compliance laws
+    (like HIPAA in healthcare) demand fair, transparent, and accountable AI systems.
+- children: []
+  content_layer: body
+  label: text
+  orig: 'From an ethical standpoint, AI must align with fundamental principles:'
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 116.47999572753906
+      coord_origin: BOTTOMLEFT
+      l: 72.21600341796875
+      r: 411.24395751953125
+      t: 127.50799560546875
+    charspan:
+    - 0
+    - 70
+    page_no: 2
+  self_ref: '#/texts/33'
+  text: 'From an ethical standpoint, AI must align with fundamental principles:'
+- children: []
+  content_layer: body
+  enumerated: false
+  label: list_item
+  marker: ''
+  orig: "\uF0B7 Autonomy: Respecting user freedom and informed consent."
+  parent:
+    $ref: '#/groups/4'
+  prov:
+  - bbox:
+      b: 92.7239990234375
+      coord_origin: BOTTOMLEFT
+      l: 90.54816436767578
+      r: 396.58599853515625
+      t: 103.75199890136719
+    charspan:
+    - 0
+    - 57
+    page_no: 2
+  self_ref: '#/texts/34'
+  text: "\uF0B7 Autonomy: Respecting user freedom and informed consent."
+- children: []
+  content_layer: body
+  label: page_header
+  orig: 'NAME: JASWANTH REDDY'
+  parent:
+    $ref: '#/groups/5'
+  prov:
+  - bbox:
+      b: 795.6519775390625
+      coord_origin: BOTTOMLEFT
+      l: 373.9159851074219
+      r: 523.1240234375
+      t: 804.0640258789062
+    charspan:
+    - 0
+    - 20
+    page_no: 2
+  self_ref: '#/texts/35'
+  text: 'NAME: JASWANTH REDDY'
+- children: []
+  content_layer: body
+  label: page_header
+  orig: 'REG NO: 24MAI0087'
+  parent:
+    $ref: '#/groups/5'
+  prov:
+  - bbox:
+      b: 781.7319946289062
+      coord_origin: BOTTOMLEFT
+      l: 413.6540222167969
+      r: 522.7940063476562
+      t: 790.14404296875
+    charspan:
+    - 0
+    - 17
+    page_no: 2
+  self_ref: '#/texts/36'
+  text: 'REG NO: 24MAI0087'
+- children: []
+  content_layer: body
+  enumerated: false
+  label: list_item
+  marker: ''
+  orig: "\uF0B7 Justice: Avoiding discrimination or bias."
+  parent:
+    $ref: '#/groups/4'
+  prov:
+  - bbox:
+      b: 756.2799682617188
+      coord_origin: BOTTOMLEFT
+      l: 90.54816436767578
+      r: 302.7860107421875
+      t: 767.3079833984375
+    charspan:
+    - 0
+    - 43
+    page_no: 3
+  self_ref: '#/texts/37'
+  text: "\uF0B7 Justice: Avoiding discrimination or bias."
+- children: []
+  content_layer: body
+  enumerated: false
+  label: list_item
+  marker: ''
+  orig: "\uF0B7 Non -maleficence: Preventing harm caused by biased decisions."
+  parent:
+    $ref: '#/groups/4'
+  prov:
+  - bbox:
+      b: 732.2799682617188
+      coord_origin: BOTTOMLEFT
+      l: 90.54816436767578
+      r: 413.1340026855469
+      t: 743.3079833984375
+    charspan:
+    - 0
+    - 63
+    page_no: 3
+  self_ref: '#/texts/38'
+  text: "\uF0B7 Non -maleficence: Preventing harm caused by biased decisions."
+- children: []
+  content_layer: body
+  enumerated: false
+  label: list_item
+  marker: ''
+  orig: "\uF0B7 Accountability: Ensuring developers and deployers are responsible\
+    \ for model actions."
+  parent:
+    $ref: '#/groups/4'
+  prov:
+  - bbox:
+      b: 708.25
+      coord_origin: BOTTOMLEFT
+      l: 90.54816436767578
+      r: 522.302001953125
+      t: 719.2780151367188
+    charspan:
+    - 0
+    - 86
+    page_no: 3
+  self_ref: '#/texts/39'
+  text: "\uF0B7 Accountability: Ensuring developers and deployers are responsible\
+    \ for model actions."
+- children: []
+  content_layer: body
+  label: text
+  orig: Ethical AI is not only a moral responsibility but also a practical requirement
+    for gaining public trust and avoiding legal consequences.
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 668.4099731445312
+      coord_origin: BOTTOMLEFT
+      l: 72.0
+      r: 491.80792236328125
+      t: 695.2780151367188
+    charspan:
+    - 0
+    - 136
+    page_no: 3
+  self_ref: '#/texts/40'
+  text: Ethical AI is not only a moral responsibility but also a practical requirement
+    for gaining public trust and avoiding legal consequences.
+- children: []
+  content_layer: body
+  label: section_header
+  level: 1
+  orig: 1.4 Mitigating Bias and Cultural Implications Using Real-Time Scenario
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 620.1499633789062
+      coord_origin: BOTTOMLEFT
+      l: 72.81600189208984
+      r: 441.4759826660156
+      t: 630.9859619140625
+    charspan:
+    - 0
+    - 70
+    page_no: 3
+  self_ref: '#/texts/41'
+  text: 1.4 Mitigating Bias and Cultural Implications Using Real-Time Scenario
+- children: []
+  content_layer: body
+  label: text
+  orig: Bias mitigation can be illustrated through real-time scenarios. Consider a
+    hiring algorithm trained on historical company data that primarily includes male
+    employees. This model may learn to favor male applicants, continuing a cycle of
+    gender discrimination. Similarly, in financial lending, models may learn to reject
+    loan applications from individuals in historically underserved communities due
+    to biased historical trends.
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 534.7039794921875
+      coord_origin: BOTTOMLEFT
+      l: 72.03600311279297
+      r: 522.5299682617188
+      t: 607.41796875
+    charspan:
+    - 0
+    - 426
+    page_no: 3
+  self_ref: '#/texts/42'
+  text: Bias mitigation can be illustrated through real-time scenarios. Consider a
+    hiring algorithm trained on historical company data that primarily includes male
+    employees. This model may learn to favor male applicants, continuing a cycle of
+    gender discrimination. Similarly, in financial lending, models may learn to reject
+    loan applications from individuals in historically underserved communities due
+    to biased historical trends.
+- children: []
+  content_layer: body
+  label: text
+  orig: 'To mitigate such biases, developers can:'
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 508.2799987792969
+      coord_origin: BOTTOMLEFT
+      l: 72.38400268554688
+      r: 263.7959899902344
+      t: 519.3079833984375
+    charspan:
+    - 0
+    - 40
+    page_no: 3
+  self_ref: '#/texts/43'
+  text: 'To mitigate such biases, developers can:'
+- children: []
+  content_layer: body
+  enumerated: false
+  label: list_item
+  marker: ''
+  orig: "\uF0B7 Balance the dataset by resampling or reweighting."
+  parent:
+    $ref: '#/groups/6'
+  prov:
+  - bbox:
+      b: 484.52001953125
+      coord_origin: BOTTOMLEFT
+      l: 90.54816436767578
+      r: 346.86199951171875
+      t: 495.5480041503906
+    charspan:
+    - 0
+    - 51
+    page_no: 3
+  self_ref: '#/texts/44'
+  text: "\uF0B7 Balance the dataset by resampling or reweighting."
+- children: []
+  content_layer: body
+  enumerated: false
+  label: list_item
+  marker: ''
+  orig: "\uF0B7 Introduce fairness constraints during training."
+  parent:
+    $ref: '#/groups/6'
+  prov:
+  - bbox:
+      b: 460.5
+      coord_origin: BOTTOMLEFT
+      l: 90.54816436767578
+      r: 325.88201904296875
+      t: 471.5279846191406
+    charspan:
+    - 0
+    - 49
+    page_no: 3
+  self_ref: '#/texts/45'
+  text: "\uF0B7 Introduce fairness constraints during training."
+- children: []
+  content_layer: body
+  enumerated: false
+  label: list_item
+  marker: ''
+  orig: "\uF0B7 Post -process the predictions to ensure equality of outcomes."
+  parent:
+    $ref: '#/groups/6'
+  prov:
+  - bbox:
+      b: 436.5
+      coord_origin: BOTTOMLEFT
+      l: 90.54816436767578
+      r: 394.58599853515625
+      t: 447.5279846191406
+    charspan:
+    - 0
+    - 63
+    page_no: 3
+  self_ref: '#/texts/46'
+  text: "\uF0B7 Post -process the predictions to ensure equality of outcomes."
+- children: []
+  content_layer: body
+  label: text
+  orig: Understanding cultural contexts is essential. A model that is fair in one
+    country may be considered biased in another. Culturally sensitive design involves
+    collaborating with domain experts, sociologists, and community stakeholders to
+    ensure ethical appropriateness.
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 380.58001708984375
+      coord_origin: BOTTOMLEFT
+      l: 72.08399963378906
+      r: 515.3419799804688
+      t: 423.5279846191406
+    charspan:
+    - 0
+    - 266
+    page_no: 3
+  self_ref: '#/texts/47'
+  text: Understanding cultural contexts is essential. A model that is fair in one
+    country may be considered biased in another. Culturally sensitive design involves
+    collaborating with domain experts, sociologists, and community stakeholders to
+    ensure ethical appropriateness.
+- children: []
+  content_layer: body
+  label: section_header
+  level: 1
+  orig: 2. Strengths and Weaknesses
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 332.32000732421875
+      coord_origin: BOTTOMLEFT
+      l: 72.31200408935547
+      r: 218.22000122070312
+      t: 343.14398193359375
+    charspan:
+    - 0
+    - 27
+    page_no: 3
+  self_ref: '#/texts/48'
+  text: 2. Strengths and Weaknesses
+- children: []
+  content_layer: body
+  label: section_header
+  level: 1
+  orig: Strengths
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 308.32000732421875
+      coord_origin: BOTTOMLEFT
+      l: 72.64800262451172
+      r: 120.61199951171875
+      t: 319.14398193359375
+    charspan:
+    - 0
+    - 9
+    page_no: 3
+  self_ref: '#/texts/49'
+  text: Strengths
+- children: []
+  content_layer: body
+  enumerated: false
+  label: list_item
+  marker: ''
+  orig: "\uF0B7 Allows identification of hidden discrimination."
+  parent:
+    $ref: '#/groups/7'
+  prov:
+  - bbox:
+      b: 286.9539794921875
+      coord_origin: BOTTOMLEFT
+      l: 90.54816436767578
+      r: 332.23394775390625
+      t: 295.5579833984375
+    charspan:
+    - 0
+    - 49
+    page_no: 3
+  self_ref: '#/texts/50'
+  text: "\uF0B7 Allows identification of hidden discrimination."
+- children: []
+  content_layer: body
+  enumerated: false
+  label: list_item
+  marker: ''
+  orig: "\uF0B7 Improves transparency, accountability, and public trust in AI."
+  parent:
+    $ref: '#/groups/7'
+  prov:
+  - bbox:
+      b: 260.5299987792969
+      coord_origin: BOTTOMLEFT
+      l: 90.54816436767578
+      r: 399.60198974609375
+      t: 271.5579833984375
+    charspan:
+    - 0
+    - 64
+    page_no: 3
+  self_ref: '#/texts/51'
+  text: "\uF0B7 Improves transparency, accountability, and public trust in AI."
+- children: []
+  content_layer: body
+  enumerated: false
+  label: list_item
+  marker: ''
+  orig: "\uF0B7 Legally y and ethically aligns AI development with real-world regulations."
+  parent:
+    $ref: '#/groups/7'
+  prov:
+  - bbox:
+      b: 236.52999877929688
+      coord_origin: BOTTOMLEFT
+      l: 90.54816436767578
+      r: 456.52398681640625
+      t: 247.55799865722656
+    charspan:
+    - 0
+    - 76
+    page_no: 3
+  self_ref: '#/texts/52'
+  text: "\uF0B7 Legally y and ethically aligns AI development with real-world regulations."
+- children: []
+  content_layer: body
+  enumerated: false
+  label: list_item
+  marker: ''
+  orig: "\uF0B7 Tools like Fairlearn, SHAP, and LIME make fairness quantifiable and\
+    \ explainable."
+  parent:
+    $ref: '#/groups/7'
+  prov:
+  - bbox:
+      b: 212.5540008544922
+      coord_origin: BOTTOMLEFT
+      l: 90.54816436767578
+      r: 502.6939697265625
+      t: 223.55799865722656
+    charspan:
+    - 0
+    - 82
+    page_no: 3
+  self_ref: '#/texts/53'
+  text: "\uF0B7 Tools like Fairlearn, SHAP, and LIME make fairness quantifiable and\
+    \ explainable."
+- children: []
+  content_layer: body
+  label: section_header
+  level: 1
+  orig: Weaknesses
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 190.6820068359375
+      coord_origin: BOTTOMLEFT
+      l: 72.13200378417969
+      r: 132.15599060058594
+      t: 198.91400146484375
+    charspan:
+    - 0
+    - 10
+    page_no: 3
+  self_ref: '#/texts/54'
+  text: Weaknesses
+- children: []
+  content_layer: body
+  enumerated: false
+  label: list_item
+  marker: ''
+  orig: "\uF0B7 Definitions of fairness are often subjective and vary across domains."
+  parent:
+    $ref: '#/groups/8'
+  prov:
+  - bbox:
+      b: 164.50999450683594
+      coord_origin: BOTTOMLEFT
+      l: 90.54816436767578
+      r: 435.06195068359375
+      t: 175.5500030517578
+    charspan:
+    - 0
+    - 71
+    page_no: 3
+  self_ref: '#/texts/55'
+  text: "\uF0B7 Definitions of fairness are often subjective and vary across domains."
+- children: []
+  content_layer: body
+  enumerated: false
+  label: list_item
+  marker: ''
+  orig: "\uF0B7 Balancing fairness may reduce model accuracy."
+  parent:
+    $ref: '#/groups/8'
+  prov:
+  - bbox:
+      b: 140.50999450683594
+      coord_origin: BOTTOMLEFT
+      l: 90.54816436767578
+      r: 335.2960205078125
+      t: 151.53799438476562
+    charspan:
+    - 0
+    - 47
+    page_no: 3
+  self_ref: '#/texts/56'
+  text: "\uF0B7 Balancing fairness may reduce model accuracy."
+- children: []
+  content_layer: body
+  enumerated: false
+  label: list_item
+  marker: ''
+  orig: "\uF0B7 Requires interdisciplinary collaboration (technical, legal, ethical)."
+  parent:
+    $ref: '#/groups/8'
+  prov:
+  - bbox:
+      b: 116.47999572753906
+      coord_origin: BOTTOMLEFT
+      l: 90.54816436767578
+      r: 421.83795166015625
+      t: 127.50799560546875
+    charspan:
+    - 0
+    - 71
+    page_no: 3
+  self_ref: '#/texts/57'
+  text: "\uF0B7 Requires interdisciplinary collaboration (technical, legal, ethical)."
+- children: []
+  content_layer: body
+  enumerated: false
+  label: list_item
+  marker: ''
+  orig: "\uF0B7 Proxy bias is difficult to detect and remove completely."
+  parent:
+    $ref: '#/groups/8'
+  prov:
+  - bbox:
+      b: 92.48400115966797
+      coord_origin: BOTTOMLEFT
+      l: 90.54816436767578
+      r: 371.761962890625
+      t: 103.51200103759766
+    charspan:
+    - 0
+    - 58
+    page_no: 3
+  self_ref: '#/texts/58'
+  text: "\uF0B7 Proxy bias is difficult to detect and remove completely."
+- children: []
+  content_layer: body
+  label: page_header
+  orig: 'NAME: JASWANTH REDDY'
+  parent:
+    $ref: '#/groups/9'
+  prov:
+  - bbox:
+      b: 795.6519775390625
+      coord_origin: BOTTOMLEFT
+      l: 373.9159851074219
+      r: 523.1240234375
+      t: 804.0640258789062
+    charspan:
+    - 0
+    - 20
+    page_no: 3
+  self_ref: '#/texts/59'
+  text: 'NAME: JASWANTH REDDY'
+- children: []
+  content_layer: body
+  label: page_header
+  orig: 'REG NO: 24MAI0087'
+  parent:
+    $ref: '#/groups/9'
+  prov:
+  - bbox:
+      b: 781.7319946289062
+      coord_origin: BOTTOMLEFT
+      l: 413.6540222167969
+      r: 522.7940063476562
+      t: 790.14404296875
+    charspan:
+    - 0
+    - 17
+    page_no: 3
+  self_ref: '#/texts/60'
+  text: 'REG NO: 24MAI0087'
+- children: []
+  content_layer: body
+  label: section_header
+  level: 1
+  orig: 3. Flowchart of AI Bias Mitigation
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 732.0399780273438
+      coord_origin: BOTTOMLEFT
+      l: 72.21600341796875
+      r: 246.9239959716797
+      t: 742.8759765625
+    charspan:
+    - 0
+    - 34
+    page_no: 4
+  self_ref: '#/texts/61'
+  text: 3. Flowchart of AI Bias Mitigation
+- captions: []
+  children: []
+  code_language: unknown
+  content_layer: body
+  footnotes: []
+  label: code
+  orig: "mathematica CopyEdit Start \u2193 Load Dataset \u2192 Clean and Preprocess\
+    \ Data \u2192 Identify Sensitive Features \u2193 Train Initial Model \u2192 Evaluate\
+    \ Accuracy and Fairness \u2193 Visualize and Explain Bias using LIME / SHAP \u2193\
+    \ Apply Fairness Mitigation (Exponentiated Gradient, etc.) \u2193 Re -evaluate\
+    \ Fairness Metrics \u2192 Visualize Results \u2193 Deploy Model or Repeat Process\
+    \ \u2193 End"
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 326.8240051269531
+      coord_origin: BOTTOMLEFT
+      l: 72.12000274658203
+      r: 428.82000732421875
+      t: 719.2780151367188
+    charspan:
+    - 0
+    - 351
+    page_no: 4
+  references: []
+  self_ref: '#/texts/62'
+  text: "mathematica CopyEdit Start \u2193 Load Dataset \u2192 Clean and Preprocess\
+    \ Data \u2192 Identify Sensitive Features \u2193 Train Initial Model \u2192 Evaluate\
+    \ Accuracy and Fairness \u2193 Visualize and Explain Bias using LIME / SHAP \u2193\
+    \ Apply Fairness Mitigation (Exponentiated Gradient, etc.) \u2193 Re -evaluate\
+    \ Fairness Metrics \u2192 Visualize Results \u2193 Deploy Model or Repeat Process\
+    \ \u2193 End"
+- children: []
+  content_layer: body
+  label: section_header
+  level: 1
+  orig: 4. Python Implementation
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 276.1300048828125
+      coord_origin: BOTTOMLEFT
+      l: 72.32400512695312
+      r: 205.1640167236328
+      t: 286.96600341796875
+    charspan:
+    - 0
+    - 24
+    page_no: 4
+  self_ref: '#/texts/63'
+  text: 4. Python Implementation
+- children: []
+  content_layer: body
+  label: text
+  orig: 'The full Python code was already provided earlier in our conversation. Here''s
+    what it includes:'
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 238.95399475097656
+      coord_origin: BOTTOMLEFT
+      l: 72.37200164794922
+      r: 479.35205078125
+      t: 263.39801025390625
+    charspan:
+    - 0
+    - 95
+    page_no: 4
+  self_ref: '#/texts/64'
+  text: 'The full Python code was already provided earlier in our conversation. Here''s
+    what it includes:'
+- children: []
+  content_layer: body
+  enumerated: false
+  label: list_item
+  marker: ''
+  orig: "\uF0B7 Logistic Regression Model trained on the Adult Income dataset."
+  parent:
+    $ref: '#/groups/10'
+  prov:
+  - bbox:
+      b: 212.52999877929688
+      coord_origin: BOTTOMLEFT
+      l: 90.54816436767578
+      r: 413.96600341796875
+      t: 223.55799865722656
+    charspan:
+    - 0
+    - 64
+    page_no: 4
+  self_ref: '#/texts/65'
+  text: "\uF0B7 Logistic Regression Model trained on the Adult Income dataset."
+- children: []
+  content_layer: body
+  enumerated: false
+  label: list_item
+  marker: ''
+  orig: "\uF0B7 Measurement of bias using Fairlearn with selection rate and true/false\
+    \ positive rates."
+  parent:
+    $ref: '#/groups/10'
+  prov:
+  - bbox:
+      b: 188.50999450683594
+      coord_origin: BOTTOMLEFT
+      l: 90.54816436767578
+      r: 511.55999755859375
+      t: 199.53799438476562
+    charspan:
+    - 0
+    - 88
+    page_no: 4
+  self_ref: '#/texts/66'
+  text: "\uF0B7 Measurement of bias using Fairlearn with selection rate and true/false\
+    \ positive rates."
+- children: []
+  content_layer: body
+  enumerated: false
+  label: list_item
+  marker: ''
+  orig: "\uF0B7 Fairness mitigation using ExponentiatedGradient with a fairness constraint\
+    \ (DemographicParity)."
+  parent:
+    $ref: '#/groups/10'
+  prov:
+  - bbox:
+      b: 148.42999267578125
+      coord_origin: BOTTOMLEFT
+      l: 90.54816436767578
+      r: 466.23797607421875
+      t: 175.53799438476562
+    charspan:
+    - 0
+    - 97
+    page_no: 4
+  self_ref: '#/texts/67'
+  text: "\uF0B7 Fairness mitigation using ExponentiatedGradient with a fairness constraint\
+    \ (DemographicParity)."
+- children: []
+  content_layer: body
+  enumerated: false
+  label: list_item
+  marker: ''
+  orig: "\uF0B7 Local interpretability with LIME to understand feature-level decisions."
+  parent:
+    $ref: '#/groups/10'
+  prov:
+  - bbox:
+      b: 124.63999938964844
+      coord_origin: BOTTOMLEFT
+      l: 90.54816436767578
+      r: 447.416015625
+      t: 135.66799926757812
+    charspan:
+    - 0
+    - 73
+    page_no: 4
+  self_ref: '#/texts/68'
+  text: "\uF0B7 Local interpretability with LIME to understand feature-level decisions."
+- children: []
+  content_layer: body
+  enumerated: false
+  label: list_item
+  marker: ''
+  orig: "\uF0B7 Global and local interpretability using SHAP to understand feature\
+    \ contributions and potential proxies for bias."
+  parent:
+    $ref: '#/groups/10'
+  prov:
+  - bbox:
+      b: 84.58799743652344
+      coord_origin: BOTTOMLEFT
+      l: 90.54816436767578
+      r: 514.5
+      t: 111.66799926757812
+    charspan:
+    - 0
+    - 114
+    page_no: 4
+  self_ref: '#/texts/69'
+  text: "\uF0B7 Global and local interpretability using SHAP to understand feature\
+    \ contributions and potential proxies for bias."
+- children: []
+  content_layer: body
+  label: page_header
+  orig: 'NAME: JASWANTH REDDY REG NO: 24MAI0087'
+  parent:
+    $ref: '#/groups/11'
+  prov:
+  - bbox:
+      b: 781.7319946289062
+      coord_origin: BOTTOMLEFT
+      l: 373.9159851074219
+      r: 523.1240234375
+      t: 804.0640258789062
+    charspan:
+    - 0
+    - 38
+    page_no: 4
+  self_ref: '#/texts/70'
+  text: 'NAME: JASWANTH REDDY REG NO: 24MAI0087'
+- children: []
+  content_layer: body
+  label: page_header
+  orig: 'NAME: JASWANTH REDDY'
+  parent:
+    $ref: '#/groups/12'
+  prov:
+  - bbox:
+      b: 795.6519775390625
+      coord_origin: BOTTOMLEFT
+      l: 373.9159851074219
+      r: 523.1240234375
+      t: 804.0640258789062
+    charspan:
+    - 0
+    - 20
+    page_no: 5
+  self_ref: '#/texts/71'
+  text: 'NAME: JASWANTH REDDY'
+- children: []
+  content_layer: body
+  label: text
+  orig: 'REG NO: 24MAI0087'
+  parent:
+    $ref: '#/groups/12'
+  prov:
+  - bbox:
+      b: 781.7319946289062
+      coord_origin: BOTTOMLEFT
+      l: 413.6540222167969
+      r: 522.7940063476562
+      t: 790.14404296875
+    charspan:
+    - 0
+    - 17
+    page_no: 5
+  self_ref: '#/texts/72'
+  text: 'REG NO: 24MAI0087'
+- children: []
+  content_layer: body
+  label: text
+  orig: Data Processing and Model Refinement
+  parent:
+    $ref: '#/pictures/0'
+  prov:
+  - bbox:
+      b: 752.2533162434896
+      coord_origin: BOTTOMLEFT
+      l: 171.33333333333331
+      r: 436.6666666666667
+      t: 766.2533162434896
+    charspan:
+    - 0
+    - 36
+    page_no: 5
+  self_ref: '#/texts/73'
+  text: Data Processing and Model Refinement
+- children: []
+  content_layer: body
+  label: text
+  orig: Funnel
+  parent:
+    $ref: '#/pictures/0'
+  prov:
+  - bbox:
+      b: 738.5866495768229
+      coord_origin: BOTTOMLEFT
+      l: 280.33333333333337
+      r: 327.3333333333333
+      t: 750.5866495768229
+    charspan:
+    - 0
+    - 6
+    page_no: 5
+  self_ref: '#/texts/74'
+  text: Funnel
+- children: []
+  content_layer: body
+  label: text
+  orig: Clean Data
+  parent:
+    $ref: '#/pictures/0'
+  prov:
+  - bbox:
+      b: 682.2533162434895
+      coord_origin: BOTTOMLEFT
+      l: 166.0
+      r: 221.33333333333334
+      t: 694.586649576823
+    charspan:
+    - 0
+    - 10
+    page_no: 5
+  self_ref: '#/texts/75'
+  text: Clean Data
+- children: []
+  content_layer: body
+  label: text
+  orig: Train Model
+  parent:
+    $ref: '#/pictures/0'
+  prov:
+  - bbox:
+      b: 682.586649576823
+      coord_origin: BOTTOMLEFT
+      l: 248.33333333333334
+      r: 309.33333333333337
+      t: 693.586649576823
+    charspan:
+    - 0
+    - 11
+    page_no: 5
+  self_ref: '#/texts/76'
+  text: Train Model
+- children: []
+  content_layer: body
+  label: text
+  orig: Visualize Bias
+  parent:
+    $ref: '#/pictures/0'
+  prov:
+  - bbox:
+      b: 682.586649576823
+      coord_origin: BOTTOMLEFT
+      l: 329.3333333333333
+      r: 398.0
+      t: 694.2533162434895
+    charspan:
+    - 0
+    - 14
+    page_no: 5
+  self_ref: '#/texts/77'
+  text: Visualize Bias
+- children: []
+  content_layer: body
+  label: text
+  orig: Fair and
+  parent:
+    $ref: '#/pictures/0'
+  prov:
+  - bbox:
+      b: 597.2533162434896
+      coord_origin: BOTTOMLEFT
+      l: 464.3333333333333
+      r: 508.0
+      t: 608.5866495768229
+    charspan:
+    - 0
+    - 8
+    page_no: 5
+  self_ref: '#/texts/78'
+  text: Fair and
+- children: []
+  content_layer: body
+  label: text
+  orig: RawDataset
+  parent:
+    $ref: '#/pictures/0'
+  prov:
+  - bbox:
+      b: 585.2533162434896
+      coord_origin: BOTTOMLEFT
+      l: 83.0
+      r: 147.66666666666669
+      t: 595.2533162434896
+    charspan:
+    - 0
+    - 10
+    page_no: 5
+  self_ref: '#/texts/79'
+  text: RawDataset
+- children: []
+  content_layer: body
+  label: text
+  orig: Accurate
+  parent:
+    $ref: '#/pictures/0'
+  prov:
+  - bbox:
+      b: 585.2533162434896
+      coord_origin: BOTTOMLEFT
+      l: 465.0
+      r: 509.0
+      t: 595.5866495768229
+    charspan:
+    - 0
+    - 8
+    page_no: 5
+  self_ref: '#/texts/80'
+  text: Accurate
+- children: []
+  content_layer: body
+  label: text
+  orig: Model
+  parent:
+    $ref: '#/pictures/0'
+  prov:
+  - bbox:
+      b: 572.5866495768229
+      coord_origin: BOTTOMLEFT
+      l: 464.3333333333333
+      r: 498.0
+      t: 583.9199829101562
+    charspan:
+    - 0
+    - 5
+    page_no: 5
+  self_ref: '#/texts/81'
+  text: Model
+- children: []
+  content_layer: body
+  label: text
+  orig: Identify
+  parent:
+    $ref: '#/pictures/0'
+  prov:
+  - bbox:
+      b: 486.25331624348956
+      coord_origin: BOTTOMLEFT
+      l: 213.33333333333334
+      r: 255.0
+      t: 499.91998291015625
+    charspan:
+    - 0
+    - 8
+    page_no: 5
+  self_ref: '#/texts/82'
+  text: Identify
+- children: []
+  content_layer: body
+  label: text
+  orig: Evaluate
+  parent:
+    $ref: '#/pictures/0'
+  prov:
+  - bbox:
+      b: 487.25331624348956
+      coord_origin: BOTTOMLEFT
+      l: 297.66666666666663
+      r: 341.6666666666667
+      t: 499.25331624348956
+    charspan:
+    - 0
+    - 8
+    page_no: 5
+  self_ref: '#/texts/83'
+  text: Evaluate
+- children: []
+  content_layer: body
+  label: text
+  orig: Mitigate Bias
+  parent:
+    $ref: '#/pictures/0'
+  prov:
+  - bbox:
+      b: 486.25331624348956
+      coord_origin: BOTTOMLEFT
+      l: 373.0
+      r: 439.6666666666667
+      t: 499.25331624348956
+    charspan:
+    - 0
+    - 13
+    page_no: 5
+  self_ref: '#/texts/84'
+  text: Mitigate Bias
+- children: []
+  content_layer: body
+  label: text
+  orig: Features
+  parent:
+    $ref: '#/pictures/0'
+  prov:
+  - bbox:
+      b: 475.25331624348956
+      coord_origin: BOTTOMLEFT
+      l: 212.66666666666666
+      r: 256.0
+      t: 486.25331624348956
+    charspan:
+    - 0
+    - 8
+    page_no: 5
+  self_ref: '#/texts/85'
+  text: Features
+- children: []
+  content_layer: body
+  label: text
+  orig: Model
+  parent:
+    $ref: '#/pictures/0'
+  prov:
+  - bbox:
+      b: 475.25331624348956
+      coord_origin: BOTTOMLEFT
+      l: 302.66666666666663
+      r: 337.0
+      t: 486.58664957682294
+    charspan:
+    - 0
+    - 5
+    page_no: 5
+  self_ref: '#/texts/86'
+  text: Model
+- children: []
+  content_layer: body
+  label: section_header
+  level: 1
+  orig: 'SOURCE CODE:'
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 422.58001708984375
+      coord_origin: BOTTOMLEFT
+      l: 72.64800262451172
+      r: 162.5760040283203
+      t: 431.0039978027344
+    charspan:
+    - 0
+    - 12
+    page_no: 5
+  self_ref: '#/texts/87'
+  text: 'SOURCE CODE:'
+- children: []
+  content_layer: body
+  label: text
+  orig: +Code
+  parent:
+    $ref: '#/pictures/1'
+  prov:
+  - bbox:
+      b: 401.91998291015625
+      coord_origin: BOTTOMLEFT
+      l: 271.0
+      r: 290.33333333333337
+      t: 408.91998291015625
+    charspan:
+    - 0
+    - 5
+    page_no: 5
+  self_ref: '#/texts/88'
+  text: +Code
+- children: []
+  content_layer: body
+  label: text
+  orig: "\u5341 Markdown"
+  parent:
+    $ref: '#/pictures/1'
+  prov:
+  - bbox:
+      b: 400.91998291015625
+      coord_origin: BOTTOMLEFT
+      l: 297.0
+      r: 327.0
+      t: 409.25331624348956
+    charspan:
+    - 0
+    - 10
+    page_no: 5
+  self_ref: '#/texts/89'
+  text: "\u5341 Markdown"
+- children: []
+  content_layer: body
+  label: text
+  orig: JASWANTHREDDY-24MAI0087
+  parent:
+    $ref: '#/pictures/1'
+  prov:
+  - bbox:
+      b: 389.25331624348956
+      coord_origin: BOTTOMLEFT
+      l: 88.0
+      r: 221.66666666666666
+      t: 398.25331624348956
+    charspan:
+    - 0
+    - 23
+    page_no: 5
+  self_ref: '#/texts/90'
+  text: JASWANTHREDDY-24MAI0087
+- children: []
+  content_layer: body
+  label: text
+  orig: Importing the Libraries
+  parent:
+    $ref: '#/pictures/1'
+  prov:
+  - bbox:
+      b: 363.58664957682294
+      coord_origin: BOTTOMLEFT
+      l: 88.33333333333333
+      r: 182.33333333333331
+      t: 373.58664957682294
+    charspan:
+    - 0
+    - 23
+    page_no: 5
+  self_ref: '#/texts/91'
+  text: Importing the Libraries
+- children: []
+  content_layer: body
+  label: text
+  orig: import pandas as pd
+  parent:
+    $ref: '#/pictures/1'
+  prov:
+  - bbox:
+      b: 340.25331624348956
+      coord_origin: BOTTOMLEFT
+      l: 100.66666666666666
+      r: 156.0
+      t: 346.91998291015625
+    charspan:
+    - 0
+    - 19
+    page_no: 5
+  self_ref: '#/texts/92'
+  text: import pandas as pd
+- children: []
+  content_layer: body
+  label: text
+  orig: import numpy as np
+  parent:
+    $ref: '#/pictures/1'
+  prov:
+  - bbox:
+      b: 331.58664957682294
+      coord_origin: BOTTOMLEFT
+      l: 100.33333333333334
+      r: 154.0
+      t: 340.91998291015625
+    charspan:
+    - 0
+    - 18
+    page_no: 5
+  self_ref: '#/texts/93'
+  text: import numpy as np
+- children: []
+  content_layer: body
+  label: text
+  orig: from sklearn.datasets import fetch_openml
+  parent:
+    $ref: '#/pictures/1'
+  prov:
+  - bbox:
+      b: 326.2533162434896
+      coord_origin: BOTTOMLEFT
+      l: 100.66666666666666
+      r: 218.0
+      t: 333.25331624348956
+    charspan:
+    - 0
+    - 41
+    page_no: 5
+  self_ref: '#/texts/94'
+  text: from sklearn.datasets import fetch_openml
+- children: []
+  content_layer: body
+  label: text
+  orig: from sklearn.model_selectionimporttrain_test_split
+  parent:
+    $ref: '#/pictures/1'
+  prov:
+  - bbox:
+      b: 318.91998291015625
+      coord_origin: BOTTOMLEFT
+      l: 100.66666666666666
+      r: 249.66666666666666
+      t: 325.5866495768229
+    charspan:
+    - 0
+    - 50
+    page_no: 5
+  self_ref: '#/texts/95'
+  text: from sklearn.model_selectionimporttrain_test_split
+- children: []
+  content_layer: body
+  label: text
+  orig: from sklearn.linear_model import LogisticRegression
+  parent:
+    $ref: '#/pictures/1'
+  prov:
+  - bbox:
+      b: 311.91998291015625
+      coord_origin: BOTTOMLEFT
+      l: 100.66666666666666
+      r: 247.0
+      t: 319.2533162434896
+    charspan:
+    - 0
+    - 51
+    page_no: 5
+  self_ref: '#/texts/96'
+  text: from sklearn.linear_model import LogisticRegression
+- children: []
+  content_layer: body
+  label: text
+  orig: from sklearn.tree import DecisionTreeClassifier
+  parent:
+    $ref: '#/pictures/1'
+  prov:
+  - bbox:
+      b: 305.2533162434896
+      coord_origin: BOTTOMLEFT
+      l: 100.66666666666666
+      r: 235.33333333333334
+      t: 312.2533162434896
+    charspan:
+    - 0
+    - 47
+    page_no: 5
+  self_ref: '#/texts/97'
+  text: from sklearn.tree import DecisionTreeClassifier
+- children: []
+  content_layer: body
+  label: text
+  orig: from fairlearn.metrics import MetricFrame, selection_rate, true_positive_rate,false_positive_rate
+  parent:
+    $ref: '#/pictures/1'
+  prov:
+  - bbox:
+      b: 297.5866495768229
+      coord_origin: BOTTOMLEFT
+      l: 100.33333333333334
+      r: 379.3333333333333
+      t: 305.5866495768229
+    charspan:
+    - 0
+    - 97
+    page_no: 5
+  self_ref: '#/texts/98'
+  text: from fairlearn.metrics import MetricFrame, selection_rate, true_positive_rate,false_positive_rate
+- children: []
+  content_layer: body
+  label: text
+  orig: from fairlearn.reductions import ExponentiatedGradient,DemographicParity
+  parent:
+    $ref: '#/pictures/1'
+  prov:
+  - bbox:
+      b: 290.2533162434896
+      coord_origin: BOTTOMLEFT
+      l: 100.0
+      r: 308.66666666666663
+      t: 298.91998291015625
+    charspan:
+    - 0
+    - 72
+    page_no: 5
+  self_ref: '#/texts/99'
+  text: from fairlearn.reductions import ExponentiatedGradient,DemographicParity
+- children: []
+  content_layer: body
+  label: text
+  orig: '[1]'
+  parent:
+    $ref: '#/pictures/1'
+  prov:
+  - bbox:
+      b: 276.2533162434896
+      coord_origin: BOTTOMLEFT
+      l: 79.0
+      r: 86.0
+      t: 281.2533162434896
+    charspan:
+    - 0
+    - 3
+    page_no: 5
+  self_ref: '#/texts/100'
+  text: '[1]'
+- children: []
+  content_layer: body
+  label: text
+  orig: 12.8s
+  parent:
+    $ref: '#/pictures/1'
+  prov:
+  - bbox:
+      b: 276.5866495768229
+      coord_origin: BOTTOMLEFT
+      l: 103.33333333333334
+      r: 114.66666666666666
+      t: 281.5866495768229
+    charspan:
+    - 0
+    - 5
+    page_no: 5
+  self_ref: '#/texts/101'
+  text: 12.8s
+- children: []
+  content_layer: body
+  label: text
+  orig: Python
+  parent:
+    $ref: '#/pictures/1'
+  prov:
+  - bbox:
+      b: 275.91998291015625
+      coord_origin: BOTTOMLEFT
+      l: 502.3333333333333
+      r: 518.0
+      t: 281.91998291015625
+    charspan:
+    - 0
+    - 6
+    page_no: 5
+  self_ref: '#/texts/102'
+  text: Python
+- children: []
+  content_layer: body
+  label: text
+  orig: Loading dataset
+  parent:
+    $ref: '#/pictures/2'
+  prov:
+  - bbox:
+      b: 241.25331624348962
+      coord_origin: BOTTOMLEFT
+      l: 89.66666666666667
+      r: 156.66666666666669
+      t: 252.25331624348962
+    charspan:
+    - 0
+    - 15
+    page_no: 5
+  self_ref: '#/texts/103'
+  text: Loading dataset
+- children: []
+  content_layer: body
+  label: text
+  orig: data =fetch_openml(data_id=1590,as_frame=True)
+  parent:
+    $ref: '#/pictures/2'
+  prov:
+  - bbox:
+      b: 218.58664957682288
+      coord_origin: BOTTOMLEFT
+      l: 102.66666666666666
+      r: 237.66666666666666
+      t: 225.25331624348962
+    charspan:
+    - 0
+    - 46
+    page_no: 5
+  self_ref: '#/texts/104'
+  text: data =fetch_openml(data_id=1590,as_frame=True)
+- children: []
+  content_layer: body
+  label: text
+  orig: df=data.frame.dropna()
+  parent:
+    $ref: '#/pictures/2'
+  prov:
+  - bbox:
+      b: 211.25331624348962
+      coord_origin: BOTTOMLEFT
+      l: 102.33333333333334
+      r: 171.0
+      t: 218.58664957682288
+    charspan:
+    - 0
+    - 22
+    page_no: 5
+  self_ref: '#/texts/105'
+  text: df=data.frame.dropna()
+- children: []
+  content_layer: body
+  label: text
+  orig: '[2]'
+  parent:
+    $ref: '#/pictures/2'
+  prov:
+  - bbox:
+      b: 203.58664957682288
+      coord_origin: BOTTOMLEFT
+      l: 80.66666666666667
+      r: 87.66666666666667
+      t: 208.58664957682288
+    charspan:
+    - 0
+    - 3
+    page_no: 5
+  self_ref: '#/texts/106'
+  text: '[2]'
+- children: []
+  content_layer: body
+  label: text
+  orig: "\u221A0.3s"
+  parent:
+    $ref: '#/pictures/2'
+  prov:
+  - bbox:
+      b: 203.58664957682288
+      coord_origin: BOTTOMLEFT
+      l: 96.33333333333334
+      r: 115.0
+      t: 209.25331624348962
+    charspan:
+    - 0
+    - 5
+    page_no: 5
+  self_ref: '#/texts/107'
+  text: "\u221A0.3s"
+- children: []
+  content_layer: body
+  label: text
+  orig: Python
+  parent:
+    $ref: '#/pictures/2'
+  prov:
+  - bbox:
+      b: 202.58664957682288
+      coord_origin: BOTTOMLEFT
+      l: 501.0
+      r: 517.3333333333333
+      t: 210.25331624348962
+    charspan:
+    - 0
+    - 6
+    page_no: 5
+  self_ref: '#/texts/108'
+  text: Python
+- children: []
+  content_layer: body
+  label: text
+  orig: Preprocessing
+  parent:
+    $ref: '#/pictures/2'
+  prov:
+  - bbox:
+      b: 177.58664957682288
+      coord_origin: BOTTOMLEFT
+      l: 83.66666666666667
+      r: 147.66666666666669
+      t: 188.91998291015625
+    charspan:
+    - 0
+    - 13
+    page_no: 5
+  self_ref: '#/texts/109'
+  text: Preprocessing
+- children: []
+  content_layer: body
+  label: text
+  orig: +Code
+  parent:
+    $ref: '#/pictures/2'
+  prov:
+  - bbox:
+      b: 172.91998291015625
+      coord_origin: BOTTOMLEFT
+      l: 272.0
+      r: 291.0
+      t: 178.91998291015625
+    charspan:
+    - 0
+    - 5
+    page_no: 5
+  self_ref: '#/texts/110'
+  text: +Code
+- children: []
+  content_layer: body
+  label: text
+  orig: "\u5341 Markdown"
+  parent:
+    $ref: '#/pictures/2'
+  prov:
+  - bbox:
+      b: 172.25331624348962
+      coord_origin: BOTTOMLEFT
+      l: 297.66666666666663
+      r: 327.6666666666667
+      t: 178.91998291015625
+    charspan:
+    - 0
+    - 10
+    page_no: 5
+  self_ref: '#/texts/111'
+  text: "\u5341 Markdown"
+- children: []
+  content_layer: body
+  label: text
+  orig: "()dse\xB7\uFF08,xos<,==[,sse,]p\uFF09 =[,ou,]p"
+  parent:
+    $ref: '#/pictures/2'
+  prov:
+  - bbox:
+      b: 155.586649576823
+      coord_origin: BOTTOMLEFT
+      l: 102.66666666666666
+      r: 243.66666666666666
+      t: 162.2533162434895
+    charspan:
+    - 0
+    - 33
+    page_no: 5
+  self_ref: '#/texts/112'
+  text: "()dse\xB7\uFF08,xos<,==[,sse,]p\uFF09 =[,ou,]p"
+- children: []
+  content_layer: body
+  label: text
+  orig: sensitive_feature = df['sex']
+  parent:
+    $ref: '#/pictures/2'
+  prov:
+  - bbox:
+      b: 148.2533162434895
+      coord_origin: BOTTOMLEFT
+      l: 102.66666666666666
+      r: 186.33333333333331
+      t: 155.2533162434895
+    charspan:
+    - 0
+    - 29
+    page_no: 5
+  self_ref: '#/texts/113'
+  text: sensitive_feature = df['sex']
+- children: []
+  content_layer: body
+  label: text
+  orig: '[.yaam-uad-sunou. ,wnu-uotreonpa, '',ase,]]tp = saunzeat'
+  parent:
+    $ref: '#/pictures/2'
+  prov:
+  - bbox:
+      b: 141.2533162434895
+      coord_origin: BOTTOMLEFT
+      l: 102.0
+      r: 264.0
+      t: 148.586649576823
+    charspan:
+    - 0
+    - 55
+    page_no: 5
+  self_ref: '#/texts/114'
+  text: '[.yaam-uad-sunou. ,wnu-uotreonpa, '',ase,]]tp = saunzeat'
+- children: []
+  content_layer: body
+  label: text
+  orig: target=df['income']
+  parent:
+    $ref: '#/pictures/2'
+  prov:
+  - bbox:
+      b: 134.586649576823
+      coord_origin: BOTTOMLEFT
+      l: 102.33333333333334
+      r: 163.33333333333331
+      t: 140.91998291015625
+    charspan:
+    - 0
+    - 19
+    page_no: 5
+  self_ref: '#/texts/115'
+  text: target=df['income']
+- children: []
+  content_layer: body
+  label: text
+  orig: '[3]'
+  parent:
+    $ref: '#/pictures/2'
+  prov:
+  - bbox:
+      b: 126.58664957682299
+      coord_origin: BOTTOMLEFT
+      l: 80.66666666666667
+      r: 87.33333333333333
+      t: 131.586649576823
+    charspan:
+    - 0
+    - 3
+    page_no: 5
+  self_ref: '#/texts/116'
+  text: '[3]'
+- children: []
+  content_layer: body
+  label: text
+  orig: 10.0s
+  parent:
+    $ref: '#/pictures/2'
+  prov:
+  - bbox:
+      b: 126.58664957682299
+      coord_origin: BOTTOMLEFT
+      l: 99.0
+      r: 114.33333333333334
+      t: 132.2533162434895
+    charspan:
+    - 0
+    - 5
+    page_no: 5
+  self_ref: '#/texts/117'
+  text: 10.0s
+- children: []
+  content_layer: body
+  label: text
+  orig: Python
+  parent:
+    $ref: '#/pictures/2'
+  prov:
+  - bbox:
+      b: 126.25331624348951
+      coord_origin: BOTTOMLEFT
+      l: 501.3333333333333
+      r: 517.3333333333333
+      t: 132.2533162434895
+    charspan:
+    - 0
+    - 6
+    page_no: 5
+  self_ref: '#/texts/118'
+  text: Python
+- children: []
+  content_layer: body
+  label: text
+  orig: 'C:\Users\pabbidi\AppData\Local\Temp\ipykernel17264\793088097.py:2:SettingWithCopyWarning:'
+  parent:
+    $ref: '#/pictures/2'
+  prov:
+  - bbox:
+      b: 114.25331624348951
+      coord_origin: BOTTOMLEFT
+      l: 92.66666666666667
+      r: 349.3333333333333
+      t: 122.91998291015625
+    charspan:
+    - 0
+    - 89
+    page_no: 5
+  self_ref: '#/texts/119'
+  text: 'C:\Users\pabbidi\AppData\Local\Temp\ipykernel17264\793088097.py:2:SettingWithCopyWarning:'
+- children: []
+  content_layer: body
+  label: text
+  orig: Avalueistryingtobesetonacopy ofaslicefroma DataFrame.
+  parent:
+    $ref: '#/pictures/2'
+  prov:
+  - bbox:
+      b: 107.91998291015625
+      coord_origin: BOTTOMLEFT
+      l: 93.0
+      r: 279.0
+      t: 114.58664957682299
+    charspan:
+    - 0
+    - 53
+    page_no: 5
+  self_ref: '#/texts/120'
+  text: Avalueistryingtobesetonacopy ofaslicefroma DataFrame.
+- children: []
+  content_layer: body
+  label: text
+  orig: Try using.loc[row_indexer,col_indexer]=valueinstead
+  parent:
+    $ref: '#/pictures/2'
+  prov:
+  - bbox:
+      b: 101.25331624348951
+      coord_origin: BOTTOMLEFT
+      l: 93.33333333333333
+      r: 249.66666666666666
+      t: 107.91998291015625
+    charspan:
+    - 0
+    - 51
+    page_no: 5
+  self_ref: '#/texts/121'
+  text: Try using.loc[row_indexer,col_indexer]=valueinstead
+- children: []
+  content_layer: body
+  label: text
+  orig: 'See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user
+    guide/indexing.html#returning-a-view-versus-a-copy.'
+  parent:
+    $ref: '#/pictures/2'
+  prov:
+  - bbox:
+      b: 86.25331624348951
+      coord_origin: BOTTOMLEFT
+      l: 92.33333333333333
+      r: 482.3333333333333
+      t: 94.91998291015625
+    charspan:
+    - 0
+    - 139
+    page_no: 5
+  self_ref: '#/texts/122'
+  text: 'See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user
+    guide/indexing.html#returning-a-view-versus-a-copy.'
+- children: []
+  content_layer: body
+  label: text
+  orig: "\uFF08\uFF09ads\xB7\uFF08,xs<,==[,ss.]p\uFF09=[,u.]"
+  parent:
+    $ref: '#/pictures/2'
+  prov:
+  - bbox:
+      b: 80.25331624348951
+      coord_origin: BOTTOMLEFT
+      l: 98.66666666666666
+      r: 240.0
+      t: 86.91998291015625
+    charspan:
+    - 0
+    - 28
+    page_no: 5
+  self_ref: '#/texts/123'
+  text: "\uFF08\uFF09ads\xB7\uFF08,xs<,==[,ss.]p\uFF09=[,u.]"
+- children: []
+  content_layer: body
+  label: page_header
+  orig: 'NAME: JASWANTH REDDY'
+  parent:
+    $ref: '#/groups/13'
+  prov:
+  - bbox:
+      b: 795.6519775390625
+      coord_origin: BOTTOMLEFT
+      l: 373.9159851074219
+      r: 523.1240234375
+      t: 804.0640258789062
+    charspan:
+    - 0
+    - 20
+    page_no: 6
+  self_ref: '#/texts/124'
+  text: 'NAME: JASWANTH REDDY'
+- children: []
+  content_layer: body
+  label: text
+  orig: 'REG NO: 24MAI0087'
+  parent:
+    $ref: '#/groups/13'
+  prov:
+  - bbox:
+      b: 781.7319946289062
+      coord_origin: BOTTOMLEFT
+      l: 413.6540222167969
+      r: 522.7940063476562
+      t: 790.14404296875
+    charspan:
+    - 0
+    - 17
+    page_no: 6
+  self_ref: '#/texts/125'
+  text: 'REG NO: 24MAI0087'
+- children: []
+  content_layer: body
+  label: text
+  orig: Train/Test Split
+  parent:
+    $ref: '#/pictures/3'
+  prov:
+  - bbox:
+      b: 753.2533162434896
+      coord_origin: BOTTOMLEFT
+      l: 86.0
+      r: 147.66666666666669
+      t: 765.2533162434896
+    charspan:
+    - 0
+    - 16
+    page_no: 6
+  self_ref: '#/texts/126'
+  text: Train/Test Split
+- children: []
+  content_layer: body
+  label: text
+  orig: X_train,X_test,y_train,y_test, sf_train,sf_test = train_test_split(
+  parent:
+    $ref: '#/pictures/3'
+  prov:
+  - bbox:
+      b: 731.2533162434896
+      coord_origin: BOTTOMLEFT
+      l: 98.66666666666666
+      r: 301.0
+      t: 737.5866495768229
+    charspan:
+    - 0
+    - 67
+    page_no: 6
+  self_ref: '#/texts/127'
+  text: X_train,X_test,y_train,y_test, sf_train,sf_test = train_test_split(
+- children: []
+  content_layer: body
+  label: text
+  orig: features, target, sensitive_feature, test_size=0.3, random_state=42
+  parent:
+    $ref: '#/pictures/3'
+  prov:
+  - bbox:
+      b: 723.2533162434896
+      coord_origin: BOTTOMLEFT
+      l: 110.0
+      r: 302.33333333333337
+      t: 731.2533162434896
+    charspan:
+    - 0
+    - 67
+    page_no: 6
+  self_ref: '#/texts/128'
+  text: features, target, sensitive_feature, test_size=0.3, random_state=42
+- children: []
+  content_layer: body
+  label: text
+  orig: '[4]'
+  parent:
+    $ref: '#/pictures/3'
+  prov:
+  - bbox:
+      b: 708.586649576823
+      coord_origin: BOTTOMLEFT
+      l: 76.66666666666667
+      r: 84.66666666666667
+      t: 714.5866495768229
+    charspan:
+    - 0
+    - 3
+    page_no: 6
+  self_ref: '#/texts/129'
+  text: '[4]'
+- children: []
+  content_layer: body
+  label: text
+  orig: 0.0s
+  parent:
+    $ref: '#/pictures/3'
+  prov:
+  - bbox:
+      b: 708.9199829101562
+      coord_origin: BOTTOMLEFT
+      l: 97.66666666666666
+      r: 111.0
+      t: 714.9199829101562
+    charspan:
+    - 0
+    - 4
+    page_no: 6
+  self_ref: '#/texts/130'
+  text: 0.0s
+- children: []
+  content_layer: body
+  label: text
+  orig: Python
+  parent:
+    $ref: '#/pictures/3'
+  prov:
+  - bbox:
+      b: 708.2533162434895
+      coord_origin: BOTTOMLEFT
+      l: 501.0
+      r: 517.6666666666667
+      t: 715.2533162434896
+    charspan:
+    - 0
+    - 6
+    page_no: 6
+  self_ref: '#/texts/131'
+  text: Python
+- children: []
+  content_layer: body
+  label: text
+  orig: Train Logistic Regression model
+  parent:
+    $ref: '#/pictures/3'
+  prov:
+  - bbox:
+      b: 683.586649576823
+      coord_origin: BOTTOMLEFT
+      l: 87.0
+      r: 216.0
+      t: 693.586649576823
+    charspan:
+    - 0
+    - 31
+    page_no: 6
+  self_ref: '#/texts/132'
+  text: Train Logistic Regression model
+- children: []
+  content_layer: body
+  label: text
+  orig: lr_model = LogisticRegression(solver='liblinear
+  parent:
+    $ref: '#/pictures/3'
+  prov:
+  - bbox:
+      b: 660.586649576823
+      coord_origin: BOTTOMLEFT
+      l: 99.33333333333334
+      r: 234.66666666666666
+      t: 666.9199829101562
+    charspan:
+    - 0
+    - 47
+    page_no: 6
+  self_ref: '#/texts/133'
+  text: lr_model = LogisticRegression(solver='liblinear
+- children: []
+  content_layer: body
+  label: text
+  orig: 1r_model.fit(x_train,y_train)
+  parent:
+    $ref: '#/pictures/3'
+  prov:
+  - bbox:
+      b: 652.586649576823
+      coord_origin: BOTTOMLEFT
+      l: 98.33333333333334
+      r: 185.0
+      t: 660.586649576823
+    charspan:
+    - 0
+    - 29
+    page_no: 6
+  self_ref: '#/texts/134'
+  text: 1r_model.fit(x_train,y_train)
+- children: []
+  content_layer: body
+  label: text
+  orig: '[5]'
+  parent:
+    $ref: '#/pictures/3'
+  prov:
+  - bbox:
+      b: 644.5866495768229
+      coord_origin: BOTTOMLEFT
+      l: 76.33333333333333
+      r: 84.33333333333333
+      t: 651.2533162434896
+    charspan:
+    - 0
+    - 3
+    page_no: 6
+  self_ref: '#/texts/135'
+  text: '[5]'
+- children: []
+  content_layer: body
+  label: text
+  orig: 0.1s
+  parent:
+    $ref: '#/pictures/3'
+  prov:
+  - bbox:
+      b: 644.5866495768229
+      coord_origin: BOTTOMLEFT
+      l: 97.33333333333334
+      r: 111.66666666666666
+      t: 651.5866495768229
+    charspan:
+    - 0
+    - 4
+    page_no: 6
+  self_ref: '#/texts/136'
+  text: 0.1s
+- children: []
+  content_layer: body
+  label: text
+  orig: Python
+  parent:
+    $ref: '#/pictures/3'
+  prov:
+  - bbox:
+      b: 644.2533162434896
+      coord_origin: BOTTOMLEFT
+      l: 501.0
+      r: 517.6666666666667
+      t: 651.2533162434896
+    charspan:
+    - 0
+    - 6
+    page_no: 6
+  self_ref: '#/texts/137'
+  text: Python
+- children: []
+  content_layer: body
+  label: text
+  orig: LogisticRegression
+  parent:
+    $ref: '#/pictures/3'
+  prov:
+  - bbox:
+      b: 631.2533162434896
+      coord_origin: BOTTOMLEFT
+      l: 113.66666666666666
+      r: 166.0
+      t: 637.9199829101562
+    charspan:
+    - 0
+    - 18
+    page_no: 6
+  self_ref: '#/texts/138'
+  text: LogisticRegression
+- children: []
+  content_layer: body
+  label: text
+  orig: LogisticRegression(solver='liblinear')
+  parent:
+    $ref: '#/pictures/3'
+  prov:
+  - bbox:
+      b: 621.9199829101562
+      coord_origin: BOTTOMLEFT
+      l: 90.66666666666667
+      r: 197.33333333333334
+      t: 628.5866495768229
+    charspan:
+    - 0
+    - 38
+    page_no: 6
+  self_ref: '#/texts/139'
+  text: LogisticRegression(solver='liblinear')
+- children: []
+  content_layer: body
+  label: text
+  orig: Predictandevaluatebeforemitigation
+  parent:
+    $ref: '#/pictures/4'
+  prov:
+  - bbox:
+      b: 586.9199829101562
+      coord_origin: BOTTOMLEFT
+      l: 87.66666666666667
+      r: 244.66666666666666
+      t: 596.5866495768229
+    charspan:
+    - 0
+    - 34
+    page_no: 6
+  self_ref: '#/texts/140'
+  text: Predictandevaluatebeforemitigation
+- children: []
+  content_layer: body
+  label: text
+  orig: preds =lr_model.predict(x_test)
+  parent:
+    $ref: '#/pictures/4'
+  prov:
+  - bbox:
+      b: 562.9199829101562
+      coord_origin: BOTTOMLEFT
+      l: 100.0
+      r: 191.66666666666666
+      t: 569.5866495768229
+    charspan:
+    - 0
+    - 31
+    page_no: 6
+  self_ref: '#/texts/141'
+  text: preds =lr_model.predict(x_test)
+- children: []
+  content_layer: body
+  label: text
+  orig: metrics = MetricFrame(
+  parent:
+    $ref: '#/pictures/4'
+  prov:
+  - bbox:
+      b: 549.5866495768229
+      coord_origin: BOTTOMLEFT
+      l: 99.33333333333334
+      r: 163.33333333333331
+      t: 555.5866495768229
+    charspan:
+    - 0
+    - 22
+    page_no: 6
+  self_ref: '#/texts/142'
+  text: metrics = MetricFrame(
+- children: []
+  content_layer: body
+  label: text
+  orig: metrics={
+  parent:
+    $ref: '#/pictures/4'
+  prov:
+  - bbox:
+      b: 542.5866495768229
+      coord_origin: BOTTOMLEFT
+      l: 111.33333333333334
+      r: 137.66666666666669
+      t: 548.2533162434896
+    charspan:
+    - 0
+    - 9
+    page_no: 6
+  self_ref: '#/texts/143'
+  text: metrics={
+- children: []
+  content_layer: body
+  label: text
+  orig: '''Selection Rate'':selection_rate,'
+  parent:
+    $ref: '#/pictures/4'
+  prov:
+  - bbox:
+      b: 534.9199829101562
+      coord_origin: BOTTOMLEFT
+      l: 123.0
+      r: 216.66666666666666
+      t: 542.2533162434896
+    charspan:
+    - 0
+    - 32
+    page_no: 6
+  self_ref: '#/texts/144'
+  text: '''Selection Rate'':selection_rate,'
+- children: []
+  content_layer: body
+  label: text
+  orig: '''True Positive Rate'':true_positive_rate,'
+  parent:
+    $ref: '#/pictures/4'
+  prov:
+  - bbox:
+      b: 527.5866495768229
+      coord_origin: BOTTOMLEFT
+      l: 123.66666666666666
+      r: 240.0
+      t: 534.9199829101562
+    charspan:
+    - 0
+    - 40
+    page_no: 6
+  self_ref: '#/texts/145'
+  text: '''True Positive Rate'':true_positive_rate,'
+- children: []
+  content_layer: body
+  label: text
+  orig: '''False Positive Rate'':false_positive_rate'
+  parent:
+    $ref: '#/pictures/4'
+  prov:
+  - bbox:
+      b: 520.9199829101562
+      coord_origin: BOTTOMLEFT
+      l: 123.33333333333334
+      r: 243.66666666666666
+      t: 528.2533162434896
+    charspan:
+    - 0
+    - 41
+    page_no: 6
+  self_ref: '#/texts/146'
+  text: '''False Positive Rate'':false_positive_rate'
+- children: []
+  content_layer: body
+  label: text
+  orig: y_true=y_test,
+  parent:
+    $ref: '#/pictures/4'
+  prov:
+  - bbox:
+      b: 506.58664957682294
+      coord_origin: BOTTOMLEFT
+      l: 111.0
+      r: 151.33333333333331
+      t: 513.2533162434895
+    charspan:
+    - 0
+    - 14
+    page_no: 6
+  self_ref: '#/texts/147'
+  text: y_true=y_test,
+- children: []
+  content_layer: body
+  label: text
+  orig: y_pred=preds,
+  parent:
+    $ref: '#/pictures/4'
+  prov:
+  - bbox:
+      b: 499.91998291015625
+      coord_origin: BOTTOMLEFT
+      l: 110.33333333333334
+      r: 149.33333333333331
+      t: 506.25331624348956
+    charspan:
+    - 0
+    - 13
+    page_no: 6
+  self_ref: '#/texts/148'
+  text: y_pred=preds,
+- children: []
+  content_layer: body
+  label: text
+  orig: sensitive_features=sf_test
+  parent:
+    $ref: '#/pictures/4'
+  prov:
+  - bbox:
+      b: 492.91998291015625
+      coord_origin: BOTTOMLEFT
+      l: 111.33333333333334
+      r: 187.0
+      t: 499.58664957682294
+    charspan:
+    - 0
+    - 26
+    page_no: 6
+  self_ref: '#/texts/149'
+  text: sensitive_features=sf_test
+- children: []
+  content_layer: body
+  label: text
+  orig: '[6]'
+  parent:
+    $ref: '#/pictures/4'
+  prov:
+  - bbox:
+      b: 477.91998291015625
+      coord_origin: BOTTOMLEFT
+      l: 78.0
+      r: 85.0
+      t: 483.25331624348956
+    charspan:
+    - 0
+    - 3
+    page_no: 6
+  self_ref: '#/texts/150'
+  text: '[6]'
+- children: []
+  content_layer: body
+  label: text
+  orig: 0.2s
+  parent:
+    $ref: '#/pictures/4'
+  prov:
+  - bbox:
+      b: 477.91998291015625
+      coord_origin: BOTTOMLEFT
+      l: 101.66666666666666
+      r: 112.0
+      t: 483.91998291015625
+    charspan:
+    - 0
+    - 4
+    page_no: 6
+  self_ref: '#/texts/151'
+  text: 0.2s
+- children: []
+  content_layer: body
+  label: text
+  orig: Python
+  parent:
+    $ref: '#/pictures/4'
+  prov:
+  - bbox:
+      b: 477.58664957682294
+      coord_origin: BOTTOMLEFT
+      l: 502.3333333333333
+      r: 518.3333333333333
+      t: 483.58664957682294
+    charspan:
+    - 0
+    - 6
+    page_no: 6
+  self_ref: '#/texts/152'
+  text: Python
+- children: []
+  content_layer: body
+  label: text
+  orig: Apply Fairness Mitigation
+  parent:
+    $ref: '#/pictures/5'
+  prov:
+  - bbox:
+      b: 445.25331624348956
+      coord_origin: BOTTOMLEFT
+      l: 86.66666666666667
+      r: 191.33333333333334
+      t: 455.58664957682294
+    charspan:
+    - 0
+    - 25
+    page_no: 6
+  self_ref: '#/texts/153'
+  text: Apply Fairness Mitigation
+- children: []
+  content_layer: body
+  label: text
+  orig: "\xB7\u65E5\u53F8"
+  parent:
+    $ref: '#/pictures/5'
+  prov:
+  - bbox:
+      b: 432.58664957682294
+      coord_origin: BOTTOMLEFT
+      l: 450.0
+      r: 501.3333333333333
+      t: 440.25331624348956
+    charspan:
+    - 0
+    - 3
+    page_no: 6
+  self_ref: '#/texts/154'
+  text: "\xB7\u65E5\u53F8"
+- children: []
+  content_layer: body
+  label: text
+  orig: print("Fairness metrics before bias mitigation:")
+  parent:
+    $ref: '#/pictures/5'
+  prov:
+  - bbox:
+      b: 422.58664957682294
+      coord_origin: BOTTOMLEFT
+      l: 98.66666666666666
+      r: 238.33333333333334
+      t: 429.58664957682294
+    charspan:
+    - 0
+    - 49
+    page_no: 6
+  self_ref: '#/texts/155'
+  text: print("Fairness metrics before bias mitigation:")
+- children: []
+  content_layer: body
+  label: text
+  orig: print(metrics.by_group)
+  parent:
+    $ref: '#/pictures/5'
+  prov:
+  - bbox:
+      b: 414.91998291015625
+      coord_origin: BOTTOMLEFT
+      l: 98.66666666666666
+      r: 166.0
+      t: 422.91998291015625
+    charspan:
+    - 0
+    - 23
+    page_no: 6
+  self_ref: '#/texts/156'
+  text: print(metrics.by_group)
+- children: []
+  content_layer: body
+  label: text
+  orig: mitigator=ExponentiatedGradient(
+  parent:
+    $ref: '#/pictures/5'
+  prov:
+  - bbox:
+      b: 401.58664957682294
+      coord_origin: BOTTOMLEFT
+      l: 99.33333333333334
+      r: 196.33333333333334
+      t: 408.25331624348956
+    charspan:
+    - 0
+    - 32
+    page_no: 6
+  self_ref: '#/texts/157'
+  text: mitigator=ExponentiatedGradient(
+- children: []
+  content_layer: body
+  label: text
+  orig: estimator=DecisionTreeClassifier(max_depth=5),
+  parent:
+    $ref: '#/pictures/5'
+  prov:
+  - bbox:
+      b: 394.58664957682294
+      coord_origin: BOTTOMLEFT
+      l: 110.66666666666666
+      r: 241.66666666666666
+      t: 401.25331624348956
+    charspan:
+    - 0
+    - 46
+    page_no: 6
+  self_ref: '#/texts/158'
+  text: estimator=DecisionTreeClassifier(max_depth=5),
+- children: []
+  content_layer: body
+  label: text
+  orig: constraints=DemographicParity()
+  parent:
+    $ref: '#/pictures/5'
+  prov:
+  - bbox:
+      b: 387.91998291015625
+      coord_origin: BOTTOMLEFT
+      l: 111.0
+      r: 199.33333333333334
+      t: 393.58664957682294
+    charspan:
+    - 0
+    - 31
+    page_no: 6
+  self_ref: '#/texts/159'
+  text: constraints=DemographicParity()
+- children: []
+  content_layer: body
+  label: text
+  orig: mitigator.fit(x_train,y_train,sensitive_features=sf_train))
+  parent:
+    $ref: '#/pictures/5'
+  prov:
+  - bbox:
+      b: 373.58664957682294
+      coord_origin: BOTTOMLEFT
+      l: 99.0
+      r: 271.33333333333337
+      t: 380.25331624348956
+    charspan:
+    - 0
+    - 59
+    page_no: 6
+  self_ref: '#/texts/160'
+  text: mitigator.fit(x_train,y_train,sensitive_features=sf_train))
+- children: []
+  content_layer: body
+  label: text
+  orig: '[7]'
+  parent:
+    $ref: '#/pictures/5'
+  prov:
+  - bbox:
+      b: 365.58664957682294
+      coord_origin: BOTTOMLEFT
+      l: 77.33333333333333
+      r: 84.66666666666667
+      t: 370.91998291015625
+    charspan:
+    - 0
+    - 3
+    page_no: 6
+  self_ref: '#/texts/161'
+  text: '[7]'
+- children: []
+  content_layer: body
+  label: text
+  orig: 0.9s
+  parent:
+    $ref: '#/pictures/5'
+  prov:
+  - bbox:
+      b: 365.25331624348956
+      coord_origin: BOTTOMLEFT
+      l: 98.66666666666666
+      r: 111.33333333333334
+      t: 371.25331624348956
+    charspan:
+    - 0
+    - 4
+    page_no: 6
+  self_ref: '#/texts/162'
+  text: 0.9s
+- children: []
+  content_layer: body
+  label: text
+  orig: Python
+  parent:
+    $ref: '#/pictures/5'
+  prov:
+  - bbox:
+      b: 364.58664957682294
+      coord_origin: BOTTOMLEFT
+      l: 501.0
+      r: 517.3333333333333
+      t: 371.58664957682294
+    charspan:
+    - 0
+    - 6
+    page_no: 6
+  self_ref: '#/texts/163'
+  text: Python
+- children: []
+  content_layer: body
+  label: text
+  orig: 'Fairness metrics before bias mitigation:'
+  parent:
+    $ref: '#/pictures/5'
+  prov:
+  - bbox:
+      b: 354.25331624348956
+      coord_origin: BOTTOMLEFT
+      l: 89.0
+      r: 204.33333333333334
+      t: 360.91998291015625
+    charspan:
+    - 0
+    - 40
+    page_no: 6
+  self_ref: '#/texts/164'
+  text: 'Fairness metrics before bias mitigation:'
+- children: []
+  content_layer: body
+  label: text
+  orig: Selection RateTrue Positive Rate
+  parent:
+    $ref: '#/pictures/5'
+  prov:
+  - bbox:
+      b: 347.58664957682294
+      coord_origin: BOTTOMLEFT
+      l: 112.33333333333334
+      r: 211.33333333333334
+      t: 353.25331624348956
+    charspan:
+    - 0
+    - 32
+    page_no: 6
+  self_ref: '#/texts/165'
+  text: Selection RateTrue Positive Rate
+- children: []
+  content_layer: body
+  label: text
+  orig: False Positive Rate
+  parent:
+    $ref: '#/pictures/5'
+  prov:
+  - bbox:
+      b: 347.58664957682294
+      coord_origin: BOTTOMLEFT
+      l: 213.0
+      r: 269.66666666666663
+      t: 353.25331624348956
+    charspan:
+    - 0
+    - 19
+    page_no: 6
+  self_ref: '#/texts/166'
+  text: False Positive Rate
+- children: []
+  content_layer: body
+  label: text
+  orig: sex
+  parent:
+    $ref: '#/pictures/5'
+  prov:
+  - bbox:
+      b: 340.25331624348956
+      coord_origin: BOTTOMLEFT
+      l: 89.66666666666667
+      r: 100.0
+      t: 346.25331624348956
+    charspan:
+    - 0
+    - 3
+    page_no: 6
+  self_ref: '#/texts/167'
+  text: sex
+- children: []
+  content_layer: body
+  label: text
+  orig: Female
+  parent:
+    $ref: '#/pictures/5'
+  prov:
+  - bbox:
+      b: 333.25331624348956
+      coord_origin: BOTTOMLEFT
+      l: 89.66666666666667
+      r: 108.66666666666666
+      t: 339.25331624348956
+    charspan:
+    - 0
+    - 6
+    page_no: 6
+  self_ref: '#/texts/168'
+  text: Female
+- children: []
+  content_layer: body
+  label: text
+  orig: '0.074066'
+  parent:
+    $ref: '#/pictures/5'
+  prov:
+  - bbox:
+      b: 333.25331624348956
+      coord_origin: BOTTOMLEFT
+      l: 128.66666666666669
+      r: 154.0
+      t: 339.91998291015625
+    charspan:
+    - 0
+    - 8
+    page_no: 6
+  self_ref: '#/texts/169'
+  text: '0.074066'
+- children: []
+  content_layer: body
+  label: text
+  orig: '0.235537'
+  parent:
+    $ref: '#/pictures/5'
+  prov:
+  - bbox:
+      b: 333.25331624348956
+      coord_origin: BOTTOMLEFT
+      l: 185.66666666666669
+      r: 210.66666666666666
+      t: 339.91998291015625
+    charspan:
+    - 0
+    - 8
+    page_no: 6
+  self_ref: '#/texts/170'
+  text: '0.235537'
+- children: []
+  content_layer: body
+  label: text
+  orig: '0.053766'
+  parent:
+    $ref: '#/pictures/5'
+  prov:
+  - bbox:
+      b: 332.91998291015625
+      coord_origin: BOTTOMLEFT
+      l: 245.0
+      r: 270.0
+      t: 339.58664957682294
+    charspan:
+    - 0
+    - 8
+    page_no: 6
+  self_ref: '#/texts/171'
+  text: '0.053766'
+- children: []
+  content_layer: body
+  label: text
+  orig: Male
+  parent:
+    $ref: '#/pictures/5'
+  prov:
+  - bbox:
+      b: 326.586649576823
+      coord_origin: BOTTOMLEFT
+      l: 89.33333333333333
+      r: 103.0
+      t: 332.58664957682294
+    charspan:
+    - 0
+    - 4
+    page_no: 6
+  self_ref: '#/texts/172'
+  text: Male
+- children: []
+  content_layer: body
+  label: text
+  orig: '0.154879'
+  parent:
+    $ref: '#/pictures/5'
+  prov:
+  - bbox:
+      b: 326.2533162434895
+      coord_origin: BOTTOMLEFT
+      l: 128.66666666666669
+      r: 154.0
+      t: 332.91998291015625
+    charspan:
+    - 0
+    - 8
+    page_no: 6
+  self_ref: '#/texts/173'
+  text: '0.154879'
+- children: []
+  content_layer: body
+  label: text
+  orig: '0.342013'
+  parent:
+    $ref: '#/pictures/5'
+  prov:
+  - bbox:
+      b: 326.2533162434895
+      coord_origin: BOTTOMLEFT
+      l: 185.66666666666669
+      r: 210.66666666666666
+      t: 332.91998291015625
+    charspan:
+    - 0
+    - 8
+    page_no: 6
+  self_ref: '#/texts/174'
+  text: '0.342013'
+- children: []
+  content_layer: body
+  label: text
+  orig: '0.071663'
+  parent:
+    $ref: '#/pictures/5'
+  prov:
+  - bbox:
+      b: 326.586649576823
+      coord_origin: BOTTOMLEFT
+      l: 244.33333333333334
+      r: 269.33333333333337
+      t: 333.25331624348956
+    charspan:
+    - 0
+    - 8
+    page_no: 6
+  self_ref: '#/texts/175'
+  text: '0.071663'
+- children: []
+  content_layer: body
+  label: text
+  orig: ExponentiatedGradient
+  parent:
+    $ref: '#/pictures/5'
+  prov:
+  - bbox:
+      b: 310.586649576823
+      coord_origin: BOTTOMLEFT
+      l: 113.33333333333334
+      r: 175.0
+      t: 316.91998291015625
+    charspan:
+    - 0
+    - 21
+    page_no: 6
+  self_ref: '#/texts/176'
+  text: ExponentiatedGradient
+- children: []
+  content_layer: body
+  label: text
+  orig: 'estimator:'
+  parent:
+    $ref: '#/pictures/5'
+  prov:
+  - bbox:
+      b: 294.2533162434895
+      coord_origin: BOTTOMLEFT
+      l: 129.0
+      r: 159.0
+      t: 299.91998291015625
+    charspan:
+    - 0
+    - 10
+    page_no: 6
+  self_ref: '#/texts/177'
+  text: 'estimator:'
+- children: []
+  content_layer: body
+  label: text
+  orig: DecisionTreeClassifier
+  parent:
+    $ref: '#/pictures/5'
+  prov:
+  - bbox:
+      b: 287.91998291015625
+      coord_origin: BOTTOMLEFT
+      l: 110.0
+      r: 174.0
+      t: 294.2533162434895
+    charspan:
+    - 0
+    - 22
+    page_no: 6
+  self_ref: '#/texts/178'
+  text: DecisionTreeClassifier
+- children: []
+  content_layer: body
+  label: text
+  orig: DecisionTreeClassifier
+  parent:
+    $ref: '#/pictures/5'
+  prov:
+  - bbox:
+      b: 276.2533162434895
+      coord_origin: BOTTOMLEFT
+      l: 108.0
+      r: 173.0
+      t: 282.91998291015625
+    charspan:
+    - 0
+    - 22
+    page_no: 6
+  self_ref: '#/texts/179'
+  text: DecisionTreeClassifier
+- children: []
+  content_layer: body
+  label: text
+  orig: "\uFF1F"
+  parent:
+    $ref: '#/pictures/5'
+  prov:
+  - bbox:
+      b: 278.586649576823
+      coord_origin: BOTTOMLEFT
+      l: 177.0
+      r: 180.33333333333331
+      t: 281.586649576823
+    charspan:
+    - 0
+    - 1
+    page_no: 6
+  self_ref: '#/texts/180'
+  text: "\uFF1F"
+- children: []
+  content_layer: body
+  label: section_header
+  level: 1
+  orig: 'NAME: JASWANTH REDDY'
+  parent:
+    $ref: '#/groups/14'
+  prov:
+  - bbox:
+      b: 795.6519775390625
+      coord_origin: BOTTOMLEFT
+      l: 373.9159851074219
+      r: 523.1240234375
+      t: 804.0640258789062
+    charspan:
+    - 0
+    - 20
+    page_no: 7
+  self_ref: '#/texts/181'
+  text: 'NAME: JASWANTH REDDY'
+- children: []
+  content_layer: body
+  label: text
+  orig: 'REG NO: 24MAI0087'
+  parent:
+    $ref: '#/groups/14'
+  prov:
+  - bbox:
+      b: 781.7319946289062
+      coord_origin: BOTTOMLEFT
+      l: 413.6540222167969
+      r: 522.7940063476562
+      t: 790.14404296875
+    charspan:
+    - 0
+    - 17
+    page_no: 7
+  self_ref: '#/texts/182'
+  text: 'REG NO: 24MAI0087'
+- children: []
+  content_layer: body
+  label: section_header
+  level: 1
+  orig: Predict and evaluate aftermitigation
+  parent:
+    $ref: '#/pictures/6'
+  prov:
+  - bbox:
+      b: 759.5866495768229
+      coord_origin: BOTTOMLEFT
+      l: 85.0
+      r: 236.0
+      t: 769.2533162434896
+    charspan:
+    - 0
+    - 36
+    page_no: 7
+  self_ref: '#/texts/183'
+  text: Predict and evaluate aftermitigation
+- children: []
+  content_layer: body
+  label: text
+  orig: mitigated_preds = mitigator.predict(x_test)
+  parent:
+    $ref: '#/pictures/6'
+  prov:
+  - bbox:
+      b: 735.5866495768229
+      coord_origin: BOTTOMLEFT
+      l: 97.66666666666666
+      r: 221.33333333333334
+      t: 742.5866495768229
+    charspan:
+    - 0
+    - 43
+    page_no: 7
+  self_ref: '#/texts/184'
+  text: mitigated_preds = mitigator.predict(x_test)
+- children: []
+  content_layer: body
+  label: text
+  orig: mitigated_metrics = MetricFrame(
+  parent:
+    $ref: '#/pictures/6'
+  prov:
+  - bbox:
+      b: 722.2533162434896
+      coord_origin: BOTTOMLEFT
+      l: 97.66666666666666
+      r: 190.33333333333334
+      t: 727.9199829101562
+    charspan:
+    - 0
+    - 32
+    page_no: 7
+  self_ref: '#/texts/185'
+  text: mitigated_metrics = MetricFrame(
+- children: []
+  content_layer: body
+  label: text
+  orig: metrics={
+  parent:
+    $ref: '#/pictures/6'
+  prov:
+  - bbox:
+      b: 714.9199829101562
+      coord_origin: BOTTOMLEFT
+      l: 108.33333333333334
+      r: 136.66666666666669
+      t: 720.9199829101562
+    charspan:
+    - 0
+    - 9
+    page_no: 7
+  self_ref: '#/texts/186'
+  text: metrics={
+- children: []
+  content_layer: body
+  label: text
+  orig: '''Selection Rate'':selection_rate,'
+  parent:
+    $ref: '#/pictures/6'
+  prov:
+  - bbox:
+      b: 707.2533162434895
+      coord_origin: BOTTOMLEFT
+      l: 121.33333333333334
+      r: 216.0
+      t: 714.5866495768229
+    charspan:
+    - 0
+    - 32
+    page_no: 7
+  self_ref: '#/texts/187'
+  text: '''Selection Rate'':selection_rate,'
+- children: []
+  content_layer: body
+  label: text
+  orig: '''True Positive Rate'': true_positive_rate,'
+  parent:
+    $ref: '#/pictures/6'
+  prov:
+  - bbox:
+      b: 699.586649576823
+      coord_origin: BOTTOMLEFT
+      l: 121.0
+      r: 239.0
+      t: 707.586649576823
+    charspan:
+    - 0
+    - 41
+    page_no: 7
+  self_ref: '#/texts/188'
+  text: '''True Positive Rate'': true_positive_rate,'
+- children: []
+  content_layer: body
+  label: text
+  orig: '''False Positive Rate'':false_positive_rate'
+  parent:
+    $ref: '#/pictures/6'
+  prov:
+  - bbox:
+      b: 693.2533162434895
+      coord_origin: BOTTOMLEFT
+      l: 121.66666666666666
+      r: 242.66666666666666
+      t: 700.586649576823
+    charspan:
+    - 0
+    - 41
+    page_no: 7
+  self_ref: '#/texts/189'
+  text: '''False Positive Rate'':false_positive_rate'
+- children: []
+  content_layer: body
+  label: text
+  orig: y_true=y_test,
+  parent:
+    $ref: '#/pictures/6'
+  prov:
+  - bbox:
+      b: 679.2533162434895
+      coord_origin: BOTTOMLEFT
+      l: 108.66666666666666
+      r: 150.0
+      t: 685.2533162434895
+    charspan:
+    - 0
+    - 14
+    page_no: 7
+  self_ref: '#/texts/190'
+  text: y_true=y_test,
+- children: []
+  content_layer: body
+  label: text
+  orig: y_pred=mitigated_preds,
+  parent:
+    $ref: '#/pictures/6'
+  prov:
+  - bbox:
+      b: 671.9199829101562
+      coord_origin: BOTTOMLEFT
+      l: 108.33333333333334
+      r: 175.66666666666669
+      t: 678.9199829101562
+    charspan:
+    - 0
+    - 23
+    page_no: 7
+  self_ref: '#/texts/191'
+  text: y_pred=mitigated_preds,
+- children: []
+  content_layer: body
+  label: text
+  orig: sensitive_features=sf_test
+  parent:
+    $ref: '#/pictures/6'
+  prov:
+  - bbox:
+      b: 664.9199829101562
+      coord_origin: BOTTOMLEFT
+      l: 109.0
+      r: 185.33333333333331
+      t: 671.586649576823
+    charspan:
+    - 0
+    - 26
+    page_no: 7
+  self_ref: '#/texts/192'
+  text: sensitive_features=sf_test
+- children: []
+  content_layer: body
+  label: text
+  orig: print("\nFairness metrics after bias mitigation:")
+  parent:
+    $ref: '#/pictures/6'
+  prov:
+  - bbox:
+      b: 643.5866495768229
+      coord_origin: BOTTOMLEFT
+      l: 97.66666666666666
+      r: 241.33333333333334
+      t: 650.2533162434896
+    charspan:
+    - 0
+    - 50
+    page_no: 7
+  self_ref: '#/texts/193'
+  text: print("\nFairness metrics after bias mitigation:")
+- children: []
+  content_layer: body
+  label: text
+  orig: print(mitigated_metrics.by_group)
+  parent:
+    $ref: '#/pictures/6'
+  prov:
+  - bbox:
+      b: 636.2533162434896
+      coord_origin: BOTTOMLEFT
+      l: 97.66666666666666
+      r: 193.0
+      t: 642.9199829101562
+    charspan:
+    - 0
+    - 33
+    page_no: 7
+  self_ref: '#/texts/194'
+  text: print(mitigated_metrics.by_group)
+- children: []
+  content_layer: body
+  label: text
+  orig: '[8]'
+  parent:
+    $ref: '#/pictures/6'
+  prov:
+  - bbox:
+      b: 628.2533162434896
+      coord_origin: BOTTOMLEFT
+      l: 75.33333333333333
+      r: 82.0
+      t: 633.9199829101562
+    charspan:
+    - 0
+    - 3
+    page_no: 7
+  self_ref: '#/texts/195'
+  text: '[8]'
+- children: []
+  content_layer: body
+  label: text
+  orig: 0.2s
+  parent:
+    $ref: '#/pictures/6'
+  prov:
+  - bbox:
+      b: 628.2533162434896
+      coord_origin: BOTTOMLEFT
+      l: 99.0
+      r: 109.66666666666666
+      t: 634.2533162434896
+    charspan:
+    - 0
+    - 4
+    page_no: 7
+  self_ref: '#/texts/196'
+  text: 0.2s
+- children: []
+  content_layer: body
+  label: text
+  orig: Python
+  parent:
+    $ref: '#/pictures/6'
+  prov:
+  - bbox:
+      b: 627.2533162434896
+      coord_origin: BOTTOMLEFT
+      l: 502.0
+      r: 521.3333333333333
+      t: 634.2533162434896
+    charspan:
+    - 0
+    - 6
+    page_no: 7
+  self_ref: '#/texts/197'
+  text: Python
+- children: []
+  content_layer: body
+  label: text
+  orig: 'Fairness metrics after bias mitigation:'
+  parent:
+    $ref: '#/pictures/6'
+  prov:
+  - bbox:
+      b: 609.9199829101562
+      coord_origin: BOTTOMLEFT
+      l: 88.0
+      r: 200.66666666666666
+      t: 615.5866495768229
+    charspan:
+    - 0
+    - 39
+    page_no: 7
+  self_ref: '#/texts/198'
+  text: 'Fairness metrics after bias mitigation:'
+- children: []
+  content_layer: body
+  label: text
+  orig: Selection RateTrue Positive Rate
+  parent:
+    $ref: '#/pictures/6'
+  prov:
+  - bbox:
+      b: 602.9199829101562
+      coord_origin: BOTTOMLEFT
+      l: 110.66666666666666
+      r: 211.0
+      t: 608.5866495768229
+    charspan:
+    - 0
+    - 32
+    page_no: 7
+  self_ref: '#/texts/199'
+  text: Selection RateTrue Positive Rate
+- children: []
+  content_layer: body
+  label: text
+  orig: False Positive Rate
+  parent:
+    $ref: '#/pictures/6'
+  prov:
+  - bbox:
+      b: 602.2533162434896
+      coord_origin: BOTTOMLEFT
+      l: 212.66666666666666
+      r: 270.33333333333337
+      t: 610.2533162434896
+    charspan:
+    - 0
+    - 19
+    page_no: 7
+  self_ref: '#/texts/200'
+  text: False Positive Rate
+- children: []
+  content_layer: body
+  label: text
+  orig: sex
+  parent:
+    $ref: '#/pictures/6'
+  prov:
+  - bbox:
+      b: 595.9199829101562
+      coord_origin: BOTTOMLEFT
+      l: 88.0
+      r: 98.0
+      t: 600.9199829101562
+    charspan:
+    - 0
+    - 3
+    page_no: 7
+  self_ref: '#/texts/201'
+  text: sex
+- children: []
+  content_layer: body
+  label: text
+  orig: Female
+  parent:
+    $ref: '#/pictures/6'
+  prov:
+  - bbox:
+      b: 588.9199829101562
+      coord_origin: BOTTOMLEFT
+      l: 87.66666666666667
+      r: 106.66666666666666
+      t: 594.9199829101562
+    charspan:
+    - 0
+    - 6
+    page_no: 7
+  self_ref: '#/texts/202'
+  text: Female
+- children: []
+  content_layer: body
+  label: text
+  orig: '0.079834'
+  parent:
+    $ref: '#/pictures/6'
+  prov:
+  - bbox:
+      b: 588.5866495768229
+      coord_origin: BOTTOMLEFT
+      l: 127.33333333333333
+      r: 153.0
+      t: 595.2533162434896
+    charspan:
+    - 0
+    - 8
+    page_no: 7
+  self_ref: '#/texts/203'
+  text: '0.079834'
+- children: []
+  content_layer: body
+  label: text
+  orig: '0.254132'
+  parent:
+    $ref: '#/pictures/6'
+  prov:
+  - bbox:
+      b: 588.5866495768229
+      coord_origin: BOTTOMLEFT
+      l: 184.66666666666669
+      r: 210.33333333333334
+      t: 595.2533162434896
+    charspan:
+    - 0
+    - 8
+    page_no: 7
+  self_ref: '#/texts/204'
+  text: '0.254132'
+- children: []
+  content_layer: body
+  label: text
+  orig: '0.057922'
+  parent:
+    $ref: '#/pictures/6'
+  prov:
+  - bbox:
+      b: 588.9199829101562
+      coord_origin: BOTTOMLEFT
+      l: 245.33333333333334
+      r: 270.0
+      t: 594.5866495768229
+    charspan:
+    - 0
+    - 8
+    page_no: 7
+  self_ref: '#/texts/205'
+  text: '0.057922'
+- children: []
+  content_layer: body
+  label: text
+  orig: Male
+  parent:
+    $ref: '#/pictures/6'
+  prov:
+  - bbox:
+      b: 580.9199829101562
+      coord_origin: BOTTOMLEFT
+      l: 86.66666666666667
+      r: 101.33333333333334
+      t: 588.2533162434896
+    charspan:
+    - 0
+    - 4
+    page_no: 7
+  self_ref: '#/texts/206'
+  text: Male
+- children: []
+  content_layer: body
+  label: text
+  orig: '0.102567'
+  parent:
+    $ref: '#/pictures/6'
+  prov:
+  - bbox:
+      b: 580.9199829101562
+      coord_origin: BOTTOMLEFT
+      l: 127.0
+      r: 152.33333333333331
+      t: 587.9199829101562
+    charspan:
+    - 0
+    - 8
+    page_no: 7
+  self_ref: '#/texts/207'
+  text: '0.102567'
+- children: []
+  content_layer: body
+  label: text
+  orig: '0.235046'
+  parent:
+    $ref: '#/pictures/6'
+  prov:
+  - bbox:
+      b: 581.2533162434896
+      coord_origin: BOTTOMLEFT
+      l: 184.66666666666669
+      r: 210.33333333333334
+      t: 587.9199829101562
+    charspan:
+    - 0
+    - 8
+    page_no: 7
+  self_ref: '#/texts/208'
+  text: '0.235046'
+- children: []
+  content_layer: body
+  label: text
+  orig: '0.043655'
+  parent:
+    $ref: '#/pictures/6'
+  prov:
+  - bbox:
+      b: 581.2533162434896
+      coord_origin: BOTTOMLEFT
+      l: 245.0
+      r: 270.33333333333337
+      t: 587.9199829101562
+    charspan:
+    - 0
+    - 8
+    page_no: 7
+  self_ref: '#/texts/209'
+  text: '0.043655'
+- captions: []
+  children: []
+  code_language: unknown
+  content_layer: body
+  footnotes: []
+  label: code
+  orig: "Define groups from MetricFrame Plot using Matplotlib import matplotlib.pyplot\
+    \ as plt groups = mitigated_metrics.by_group.index.tolist() selection_rate_before\
+    \ = metrics.by_group['Selection Rate'] selection_rate_after=mitigated_metrics.by_group['Selection\
+    \ Rate'] plt.figure(figsize=(8,6)) plt.scatter(groups, selection_rate_before,\
+    \ color='red', label='Before Mitigation', s=1o0) plt.scatter(groups, selection_rate_after,\
+    \ color=\u2032green', label='After Mitigation', s=100) plt.title('Selection Rate\
+    \ by Gender(Before and After Mitigation)') plt.xlabel('Gender Group') plt.ylabel('Selection\
+    \ Rate') plt.ylim(0,1) plt.grid(True) plt.legend() plt.tight_layout() plt.show()\
+    \ [10]"
+  parent:
+    $ref: '#/pictures/7'
+  prov:
+  - bbox:
+      b: 382.91998291015625
+      coord_origin: BOTTOMLEFT
+      l: 78.66666666666667
+      r: 356.3333333333333
+      t: 563.5866495768229
+    charspan:
+    - 0
+    - 666
+    page_no: 7
+  references: []
+  self_ref: '#/texts/210'
+  text: "Define groups from MetricFrame Plot using Matplotlib import matplotlib.pyplot\
+    \ as plt groups = mitigated_metrics.by_group.index.tolist() selection_rate_before\
+    \ = metrics.by_group['Selection Rate'] selection_rate_after=mitigated_metrics.by_group['Selection\
+    \ Rate'] plt.figure(figsize=(8,6)) plt.scatter(groups, selection_rate_before,\
+    \ color='red', label='Before Mitigation', s=1o0) plt.scatter(groups, selection_rate_after,\
+    \ color=\u2032green', label='After Mitigation', s=100) plt.title('Selection Rate\
+    \ by Gender(Before and After Mitigation)') plt.xlabel('Gender Group') plt.ylabel('Selection\
+    \ Rate') plt.ylim(0,1) plt.grid(True) plt.legend() plt.tight_layout() plt.show()\
+    \ [10]"
+- children: []
+  content_layer: body
+  label: section_header
+  level: 1
+  orig: 'NAME: JASWANTH REDDY REG NO: 24MAI0087'
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 781.7319946289062
+      coord_origin: BOTTOMLEFT
+      l: 373.9159851074219
+      r: 523.1240234375
+      t: 804.0640258789062
+    charspan:
+    - 0
+    - 38
+    page_no: 8
+  self_ref: '#/texts/211'
+  text: 'NAME: JASWANTH REDDY REG NO: 24MAI0087'
+- children: []
+  content_layer: body
+  label: section_header
+  level: 1
+  orig: SelectionRatebyGender(BeforeandAfterMitigation)
+  parent:
+    $ref: '#/pictures/8'
+  prov:
+  - bbox:
+      b: 754.5866495768229
+      coord_origin: BOTTOMLEFT
+      l: 183.66666666666669
+      r: 441.6666666666667
+      t: 764.5866495768229
+    charspan:
+    - 0
+    - 47
+    page_no: 8
+  self_ref: '#/texts/212'
+  text: SelectionRatebyGender(BeforeandAfterMitigation)
+- children: []
+  content_layer: body
+  label: text
+  orig: '1.0'
+  parent:
+    $ref: '#/pictures/8'
+  prov:
+  - bbox:
+      b: 746.2533162434896
+      coord_origin: BOTTOMLEFT
+      l: 88.33333333333333
+      r: 102.33333333333334
+      t: 755.2533162434896
+    charspan:
+    - 0
+    - 3
+    page_no: 8
+  self_ref: '#/texts/213'
+  text: '1.0'
+- children: []
+  content_layer: body
+  label: text
+  orig: Before Mitigation
+  parent:
+    $ref: '#/pictures/8'
+  prov:
+  - bbox:
+      b: 735.2533162434896
+      coord_origin: BOTTOMLEFT
+      l: 442.0
+      r: 511.6666666666667
+      t: 745.5866495768229
+    charspan:
+    - 0
+    - 17
+    page_no: 8
+  self_ref: '#/texts/214'
+  text: Before Mitigation
+- children: []
+  content_layer: body
+  label: text
+  orig: After Mitigation
+  parent:
+    $ref: '#/pictures/8'
+  prov:
+  - bbox:
+      b: 723.2533162434896
+      coord_origin: BOTTOMLEFT
+      l: 441.6666666666667
+      r: 504.6666666666667
+      t: 733.2533162434896
+    charspan:
+    - 0
+    - 16
+    page_no: 8
+  self_ref: '#/texts/215'
+  text: After Mitigation
+- children: []
+  content_layer: body
+  label: text
+  orig: '0.8'
+  parent:
+    $ref: '#/pictures/8'
+  prov:
+  - bbox:
+      b: 688.586649576823
+      coord_origin: BOTTOMLEFT
+      l: 88.0
+      r: 102.66666666666666
+      t: 697.586649576823
+    charspan:
+    - 0
+    - 3
+    page_no: 8
+  self_ref: '#/texts/216'
+  text: '0.8'
+- children: []
+  content_layer: body
+  label: text
+  orig: SelectionRate
+  parent:
+    $ref: '#/pictures/8'
+  prov:
+  - bbox:
+      b: 576.2533162434896
+      coord_origin: BOTTOMLEFT
+      l: 76.0
+      r: 86.0
+      t: 637.2533162434896
+    charspan:
+    - 0
+    - 13
+    page_no: 8
+  self_ref: '#/texts/217'
+  text: SelectionRate
+- children: []
+  content_layer: body
+  label: text
+  orig: '0.6'
+  parent:
+    $ref: '#/pictures/8'
+  prov:
+  - bbox:
+      b: 630.9199829101562
+      coord_origin: BOTTOMLEFT
+      l: 88.66666666666667
+      r: 102.66666666666666
+      t: 639.9199829101562
+    charspan:
+    - 0
+    - 3
+    page_no: 8
+  self_ref: '#/texts/218'
+  text: '0.6'
+- children: []
+  content_layer: body
+  label: text
+  orig: '0.4'
+  parent:
+    $ref: '#/pictures/8'
+  prov:
+  - bbox:
+      b: 574.5866495768229
+      coord_origin: BOTTOMLEFT
+      l: 89.33333333333333
+      r: 102.66666666666666
+      t: 582.2533162434896
+    charspan:
+    - 0
+    - 3
+    page_no: 8
+  self_ref: '#/texts/219'
+  text: '0.4'
+- children: []
+  content_layer: body
+  label: text
+  orig: '0.2'
+  parent:
+    $ref: '#/pictures/8'
+  prov:
+  - bbox:
+      b: 515.9199829101562
+      coord_origin: BOTTOMLEFT
+      l: 89.0
+      r: 103.0
+      t: 525.2533162434896
+    charspan:
+    - 0
+    - 3
+    page_no: 8
+  self_ref: '#/texts/220'
+  text: '0.2'
+- children: []
+  content_layer: body
+  label: text
+  orig: '0.0'
+  parent:
+    $ref: '#/pictures/8'
+  prov:
+  - bbox:
+      b: 458.91998291015625
+      coord_origin: BOTTOMLEFT
+      l: 88.66666666666667
+      r: 103.33333333333334
+      t: 467.25331624348956
+    charspan:
+    - 0
+    - 3
+    page_no: 8
+  self_ref: '#/texts/221'
+  text: '0.0'
+- children: []
+  content_layer: body
+  label: text
+  orig: Female
+  parent:
+    $ref: '#/pictures/8'
+  prov:
+  - bbox:
+      b: 449.91998291015625
+      coord_origin: BOTTOMLEFT
+      l: 111.0
+      r: 140.33333333333331
+      t: 459.25331624348956
+    charspan:
+    - 0
+    - 6
+    page_no: 8
+  self_ref: '#/texts/222'
+  text: Female
+- children: []
+  content_layer: body
+  label: text
+  orig: Male
+  parent:
+    $ref: '#/pictures/8'
+  prov:
+  - bbox:
+      b: 449.58664957682294
+      coord_origin: BOTTOMLEFT
+      l: 489.0
+      r: 509.3333333333333
+      t: 459.25331624348956
+    charspan:
+    - 0
+    - 4
+    page_no: 8
+  self_ref: '#/texts/223'
+  text: Male
+- children: []
+  content_layer: body
+  label: text
+  orig: Gender Group
+  parent:
+    $ref: '#/pictures/8'
+  prov:
+  - bbox:
+      b: 437.25331624348956
+      coord_origin: BOTTOMLEFT
+      l: 284.0
+      r: 341.3333333333333
+      t: 448.58664957682294
+    charspan:
+    - 0
+    - 12
+    page_no: 8
+  self_ref: '#/texts/224'
+  text: Gender Group
+- children: []
+  content_layer: body
+  label: section_header
+  level: 1
+  orig: Explanation of Implementation for Measuring and Mitigating AI Bias
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 379.44720458984375
+      coord_origin: BOTTOMLEFT
+      l: 72.30239868164062
+      r: 487.8004150390625
+      t: 392.0169677734375
+    charspan:
+    - 0
+    - 66
+    page_no: 8
+  self_ref: '#/texts/225'
+  text: Explanation of Implementation for Measuring and Mitigating AI Bias
+- children: []
+  content_layer: body
+  label: text
+  orig: This implementation is based on detecting and mitigating bias in a real-world
+    classification task using the Adult Income dataset. The goal is to evaluate how
+    a machine learning model can unfairly treat different demographic groups and how
+    such unfairness can be mitigated using fairness-aware algorithms.
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 307.1200256347656
+      coord_origin: BOTTOMLEFT
+      l: 72.03600311279297
+      r: 509.822021484375
+      t: 366.14801025390625
+    charspan:
+    - 0
+    - 304
+    page_no: 8
+  self_ref: '#/texts/226'
+  text: This implementation is based on detecting and mitigating bias in a real-world
+    classification task using the Adult Income dataset. The goal is to evaluate how
+    a machine learning model can unfairly treat different demographic groups and how
+    such unfairness can be mitigated using fairness-aware algorithms.
+- children: []
+  content_layer: body
+  label: section_header
+  level: 1
+  orig: Dataset Overview
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 285.50201416015625
+      coord_origin: BOTTOMLEFT
+      l: 72.18000030517578
+      r: 162.63600158691406
+      t: 293.926025390625
+    charspan:
+    - 0
+    - 16
+    page_no: 8
+  self_ref: '#/texts/227'
+  text: Dataset Overview
+- children: []
+  content_layer: body
+  label: text
+  orig: The Adult Income dataset from UCI contains census records and aims to predict
+    whether a person's income exceeds $50,000 per year. It includes features such
+    as age, education level, hours worked per week, occupation, and sex. In this context,
+    gender is treated as a sensitive attribute to evaluate fairness.
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 213.75399780273438
+      coord_origin: BOTTOMLEFT
+      l: 72.0
+      r: 511.0780029296875
+      t: 270.3580017089844
+    charspan:
+    - 0
+    - 306
+    page_no: 8
+  self_ref: '#/texts/228'
+  text: The Adult Income dataset from UCI contains census records and aims to predict
+    whether a person's income exceeds $50,000 per year. It includes features such
+    as age, education level, hours worked per week, occupation, and sex. In this context,
+    gender is treated as a sensitive attribute to evaluate fairness.
+- children: []
+  content_layer: body
+  label: section_header
+  level: 1
+  orig: Data Preprocessing
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 187.0699920654297
+      coord_origin: BOTTOMLEFT
+      l: 72.18000030517578
+      r: 170.8560028076172
+      t: 197.90599060058594
+    charspan:
+    - 0
+    - 18
+    page_no: 8
+  self_ref: '#/texts/229'
+  text: Data Preprocessing
+- children: []
+  content_layer: body
+  label: text
+  orig: 'The dataset is cleaned to remove missing values. The income column is converted
+    into binary labels: 1 for income greater than $50K and 0 for income less than
+    or equal to $50K. Only a subset of numerical features such as age, education level,
+    and hours worked per week is used for training the model. Gender is not included
+    as a feature in training but is used as a sensitive attribute for fairness evaluation.'
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 101.86399841308594
+      coord_origin: BOTTOMLEFT
+      l: 72.38400268554688
+      r: 522.0120239257812
+      t: 174.33799743652344
+    charspan:
+    - 0
+    - 409
+    page_no: 8
+  self_ref: '#/texts/230'
+  text: 'The dataset is cleaned to remove missing values. The income column is converted
+    into binary labels: 1 for income greater than $50K and 0 for income less than
+    or equal to $50K. Only a subset of numerical features such as age, education level,
+    and hours worked per week is used for training the model. Gender is not included
+    as a feature in training but is used as a sensitive attribute for fairness evaluation.'
+- children: []
+  content_layer: body
+  label: section_header
+  level: 1
+  orig: Splitting the Data
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 756.0399780273438
+      coord_origin: BOTTOMLEFT
+      l: 72.64800262451172
+      r: 162.6719970703125
+      t: 766.8759765625
+    charspan:
+    - 0
+    - 18
+    page_no: 9
+  self_ref: '#/texts/231'
+  text: Splitting the Data
+- children: []
+  content_layer: body
+  label: text
+  orig: The dataset is divided into training and testing sets. Along with the feature
+    and target variables, the gender column is separated out so that it can later
+    be used to evaluate whether the model behaves differently for different gender
+    groups.
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 700.3299560546875
+      coord_origin: BOTTOMLEFT
+      l: 72.12000274658203
+      r: 512.2440795898438
+      t: 743.3079833984375
+    charspan:
+    - 0
+    - 242
+    page_no: 9
+  self_ref: '#/texts/232'
+  text: The dataset is divided into training and testing sets. Along with the feature
+    and target variables, the gender column is separated out so that it can later
+    be used to evaluate whether the model behaves differently for different gender
+    groups.
+- children: []
+  content_layer: body
+  label: section_header
+  level: 1
+  orig: Model Training
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 676.0899658203125
+      coord_origin: BOTTOMLEFT
+      l: 72.26399993896484
+      r: 151.44000244140625
+      t: 686.9259643554688
+    charspan:
+    - 0
+    - 14
+    page_no: 9
+  self_ref: '#/texts/233'
+  text: Model Training
+- children: []
+  content_layer: body
+  label: text
+  orig: A logistic regression model is trained using the selected features. This model
+    is used to predict whether an individual earns more than $50K per year. Even though
+    the gender feature is not directly used in the model, it is possible for the model
+    to learn biases indirectly from proxy variables that correlate with gender.
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 604.3099975585938
+      coord_origin: BOTTOMLEFT
+      l: 72.0
+      r: 519.384033203125
+      t: 663.3579711914062
+    charspan:
+    - 0
+    - 321
+    page_no: 9
+  self_ref: '#/texts/234'
+  text: A logistic regression model is trained using the selected features. This model
+    is used to predict whether an individual earns more than $50K per year. Even though
+    the gender feature is not directly used in the model, it is possible for the model
+    to learn biases indirectly from proxy variables that correlate with gender.
+- children: []
+  content_layer: body
+  label: section_header
+  level: 1
+  orig: Fairness Evaluation (Before Mitigation)
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 580.0700073242188
+      coord_origin: BOTTOMLEFT
+      l: 72.28800201416016
+      r: 275.531982421875
+      t: 590.906005859375
+    charspan:
+    - 0
+    - 39
+    page_no: 9
+  self_ref: '#/texts/235'
+  text: Fairness Evaluation (Before Mitigation)
+- children: []
+  content_layer: body
+  label: text
+  orig: 'To assess whether the model is biased, fairness metrics are calculated separately
+    for male and female groups. The metrics used are:'
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 540.4400024414062
+      coord_origin: BOTTOMLEFT
+      l: 72.38400268554688
+      r: 519.2039794921875
+      t: 567.3380126953125
+    charspan:
+    - 0
+    - 131
+    page_no: 9
+  self_ref: '#/texts/236'
+  text: 'To assess whether the model is biased, fairness metrics are calculated separately
+    for male and female groups. The metrics used are:'
+- children: []
+  content_layer: body
+  enumerated: false
+  label: list_item
+  marker: ''
+  orig: "\uF0B7 Selection Rate: The percentage of individuals in each group predicted\
+    \ to earn more than $50K."
+  parent:
+    $ref: '#/groups/15'
+  prov:
+  - bbox:
+      b: 502.0400085449219
+      coord_origin: BOTTOMLEFT
+      l: 90.54816436767578
+      r: 509.13604736328125
+      t: 527.468017578125
+    charspan:
+    - 0
+    - 95
+    page_no: 9
+  self_ref: '#/texts/237'
+  text: "\uF0B7 Selection Rate: The percentage of individuals in each group predicted\
+    \ to earn more than $50K."
+- children: []
+  content_layer: body
+  enumerated: false
+  label: list_item
+  marker: ''
+  orig: "\uF0B7 True Positive Rate: The proportion of individuals who actually earn\
+    \ more than $50K and are correctly identified."
+  parent:
+    $ref: '#/groups/15'
+  prov:
+  - bbox:
+      b: 460.5
+      coord_origin: BOTTOMLEFT
+      l: 90.54816436767578
+      r: 519.25
+      t: 487.68798828125
+    charspan:
+    - 0
+    - 114
+    page_no: 9
+  self_ref: '#/texts/238'
+  text: "\uF0B7 True Positive Rate: The proportion of individuals who actually earn\
+    \ more than $50K and are correctly identified."
+- children: []
+  content_layer: body
+  enumerated: false
+  label: list_item
+  marker: ''
+  orig: "\uF0B7 False Positive Rate: The proportion of individuals who earn less than\
+    \ $50K but are incorrectly predicted to earn more."
+  parent:
+    $ref: '#/groups/15'
+  prov:
+  - bbox:
+      b: 420.4200134277344
+      coord_origin: BOTTOMLEFT
+      l: 90.54816436767578
+      r: 509.45794677734375
+      t: 447.8279724121094
+    charspan:
+    - 0
+    - 120
+    page_no: 9
+  self_ref: '#/texts/239'
+  text: "\uF0B7 False Positive Rate: The proportion of individuals who earn less than\
+    \ $50K but are incorrectly predicted to earn more."
+- children: []
+  content_layer: body
+  label: text
+  orig: If these values are significantly different across gender groups, the model
+    is considered biased.
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 383.0039978027344
+      coord_origin: BOTTOMLEFT
+      l: 72.01200103759766
+      r: 489.2039794921875
+      t: 407.447998046875
+    charspan:
+    - 0
+    - 97
+    page_no: 9
+  self_ref: '#/texts/240'
+  text: If these values are significantly different across gender groups, the model
+    is considered biased.
+- children: []
+  content_layer: body
+  label: section_header
+  level: 1
+  orig: Fairness Mitigation Technique
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 356.32000732421875
+      coord_origin: BOTTOMLEFT
+      l: 72.28800201416016
+      r: 227.87997436523438
+      t: 367.156005859375
+    charspan:
+    - 0
+    - 29
+    page_no: 9
+  self_ref: '#/texts/241'
+  text: Fairness Mitigation Technique
+- children: []
+  content_layer: body
+  label: text
+  orig: A bias mitigation technique called Exponentiated Gradient is applied. This
+    method adjusts the m odel during training by introducing a fairness constraint
+    known as Demographic Parity. The goal of this constraint is to ensure that the
+    model gives equal selection rates (i.e., predicted positive outcomes) across all
+    gender groups, regardless of their true labels.
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 284.5299987792969
+      coord_origin: BOTTOMLEFT
+      l: 72.0
+      r: 522.0480346679688
+      t: 343.6000061035156
+    charspan:
+    - 0
+    - 361
+    page_no: 9
+  self_ref: '#/texts/242'
+  text: A bias mitigation technique called Exponentiated Gradient is applied. This
+    method adjusts the m odel during training by introducing a fairness constraint
+    known as Demographic Parity. The goal of this constraint is to ensure that the
+    model gives equal selection rates (i.e., predicted positive outcomes) across all
+    gender groups, regardless of their true labels.
+- children: []
+  content_layer: body
+  label: text
+  orig: This technique involves training a model that balances fairness and accuracy,
+    often leading to improved equity in outcomes.
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 244.4499969482422
+      coord_origin: BOTTOMLEFT
+      l: 72.37200164794922
+      r: 519.4679565429688
+      t: 271.5579833984375
+    charspan:
+    - 0
+    - 123
+    page_no: 9
+  self_ref: '#/texts/243'
+  text: This technique involves training a model that balances fairness and accuracy,
+    often leading to improved equity in outcomes.
+- children: []
+  content_layer: body
+  label: section_header
+  level: 1
+  orig: Fairness Evaluation (After Mitigation)
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 220.4499969482422
+      coord_origin: BOTTOMLEFT
+      l: 72.28800201416016
+      r: 268.8119812011719
+      t: 231.28599548339844
+    charspan:
+    - 0
+    - 38
+    page_no: 9
+  self_ref: '#/texts/244'
+  text: Fairness Evaluation (After Mitigation)
+- children: []
+  content_layer: body
+  label: text
+  orig: After applying the mitigation technique, the model ' s fairness is reassessed
+    using the same metrics. The new results show whether the disparity between gender
+    groups has reduced. Ideally, the selection rate, true positive rate, and false
+    positive rate should become more aligned across groups.
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 148.6699981689453
+      coord_origin: BOTTOMLEFT
+      l: 72.12000274658203
+      r: 502.4179992675781
+      t: 207.697998046875
+    charspan:
+    - 0
+    - 294
+    page_no: 9
+  self_ref: '#/texts/245'
+  text: After applying the mitigation technique, the model ' s fairness is reassessed
+    using the same metrics. The new results show whether the disparity between gender
+    groups has reduced. Ideally, the selection rate, true positive rate, and false
+    positive rate should become more aligned across groups.
+- children: []
+  content_layer: body
+  label: section_header
+  level: 1
+  orig: Visualization Using Scatter Plot
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 124.4000015258789
+      coord_origin: BOTTOMLEFT
+      l: 72.12000274658203
+      r: 233.91600036621094
+      t: 135.2360076904297
+    charspan:
+    - 0
+    - 32
+    page_no: 9
+  self_ref: '#/texts/246'
+  text: Visualization Using Scatter Plot
+- children: []
+  content_layer: body
+  label: text
+  orig: To visualize the effectiveness of the mitigation, a scatter plot is created.
+    It shows the selection rate for each gender both before and after the mitigation
+    process. This visual comparison
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 84.56399536132812
+      coord_origin: BOTTOMLEFT
+      l: 72.09600067138672
+      r: 521.35400390625
+      t: 111.66799926757812
+    charspan:
+    - 0
+    - 189
+    page_no: 9
+  self_ref: '#/texts/247'
+  text: To visualize the effectiveness of the mitigation, a scatter plot is created.
+    It shows the selection rate for each gender both before and after the mitigation
+    process. This visual comparison
+- children: []
+  content_layer: body
+  label: page_header
+  orig: 'NAME: JASWANTH REDDY REG NO: 24MAI0087'
+  parent:
+    $ref: '#/groups/16'
+  prov:
+  - bbox:
+      b: 781.7319946289062
+      coord_origin: BOTTOMLEFT
+      l: 373.9159851074219
+      r: 523.1240234375
+      t: 804.0640258789062
+    charspan:
+    - 0
+    - 38
+    page_no: 9
+  self_ref: '#/texts/248'
+  text: 'NAME: JASWANTH REDDY REG NO: 24MAI0087'
+- children: []
+  content_layer: body
+  label: page_header
+  orig: 'NAME: JASWANTH REDDY REG NO: 24MAI0087'
+  parent:
+    $ref: '#/groups/17'
+  prov:
+  - bbox:
+      b: 781.7319946289062
+      coord_origin: BOTTOMLEFT
+      l: 373.9159851074219
+      r: 523.1240234375
+      t: 804.0640258789062
+    charspan:
+    - 0
+    - 38
+    page_no: 10
+  self_ref: '#/texts/249'
+  text: 'NAME: JASWANTH REDDY REG NO: 24MAI0087'
+- children: []
+  content_layer: body
+  label: text
+  orig: highlights how the model's fairness has improved. The closer the points are
+    to each other, the more balanced the model's outcomes are across gender groups.
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 740.2000122070312
+      coord_origin: BOTTOMLEFT
+      l: 72.09600067138672
+      r: 517.9940185546875
+      t: 767.3079833984375
+    charspan:
+    - 0
+    - 155
+    page_no: 10
+  self_ref: '#/texts/250'
+  text: highlights how the model's fairness has improved. The closer the points are
+    to each other, the more balanced the model's outcomes are across gender groups.
+- children: []
+  content_layer: body
+  label: section_header
+  level: 1
+  orig: Conclusion
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 694.5819702148438
+      coord_origin: BOTTOMLEFT
+      l: 72.5040054321289
+      r: 128.71200561523438
+      t: 703.0059814453125
+    charspan:
+    - 0
+    - 10
+    page_no: 10
+  self_ref: '#/texts/251'
+  text: Conclusion
+- children: []
+  content_layer: body
+  label: text
+  orig: The process demonstrates that even a model trained without explicitly biased
+    features can still exhibit unfair behavior due to correlations in the data. By
+    applying fairness evaluation metrics and mitigation strategies, this unfairness
+    can be detected and significantly reduced.
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 636.25
+      coord_origin: BOTTOMLEFT
+      l: 72.12000274658203
+      r: 506.47198486328125
+      t: 679.43798828125
+    charspan:
+    - 0
+    - 278
+    page_no: 10
+  self_ref: '#/texts/252'
+  text: The process demonstrates that even a model trained without explicitly biased
+    features can still exhibit unfair behavior due to correlations in the data. By
+    applying fairness evaluation metrics and mitigation strategies, this unfairness
+    can be detected and significantly reduced.
+- children: []
+  content_layer: body
+  label: text
+  orig: This approach is essential in real-world applications where decisions made
+    by machine learning models directly impact people ' s lives, such as in hiring,
+    lending, or healthcare. Mitigating bias not only ensures compliance with ethical
+    and legal standards but also enhances the trustworthiness and inclusivity of AI
+    systems.
+  parent:
+    $ref: '#/body'
+  prov:
+  - bbox:
+      b: 564.469970703125
+      coord_origin: BOTTOMLEFT
+      l: 72.2280044555664
+      r: 490.739990234375
+      t: 623.2579956054688
+    charspan:
+    - 0
+    - 324
+    page_no: 10
+  self_ref: '#/texts/253'
+  text: This approach is essential in real-world applications where decisions made
+    by machine learning models directly impact people ' s lives, such as in hiring,
+    lending, or healthcare. Mitigating bias not only ensures compliance with ethical
+    and legal standards but also enhances the trustworthiness and inclusivity of AI
+    systems.
+version: 1.9.0
