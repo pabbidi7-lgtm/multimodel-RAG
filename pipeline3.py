@@ -228,28 +228,32 @@ def ensure_collection():
 
 
 if __name__ == "__main__":
+    logging.disable(logging.CRITICAL)
+    
+    # Drop old invoice collection
+    if milvus.has_collection(COLLECTION):
+        milvus.drop_collection(COLLECTION)
+        print(f"Dropped old collection '{COLLECTION}'")
+    
     ensure_collection()
 
-    # ---------- Ingest individual PDFs ----------
     pdfs = [
-        "C:\\Users\\pabbidi\\Downloads\\NV-Ingest\\docks\\invoice-0-4.pdf",
-
+        "C:\\Users\\pabbidi\\Downloads\\NV-Ingest\\docks\\PK0016.pdf",
     ]
 
     for pdf in pdfs:
         if not os.path.exists(pdf):
-            logger.error(f"File not found: {pdf}")
+            print(f"File not found: {pdf}")
         else:
             num = ingest_document([pdf])
             print(f"Ingested {num} chunks from {os.path.basename(pdf)}")
 
-    # ---------- Ask multiple questions ----------
     queries = [
-        "What is the invoice number and date?",
-        "Who is the salesperson and what are the payment terms?",
-        "What is the total amount due including tax and shipping?",
-        "List all items with unit price greater than 30 dollars",
-        "What is the shipping address and contact phone number of the recipient?",
+        "What are all the test results that are outside the normal biological reference interval, and by how much?",
+        "Based on the kidney function test results and the eGFR classification table, what is the patient's GFR category and what does it signify?",
+        "What is the patient's HbA1c value and according to the ADA guidelines in the report, does this patient fall in the non-diabetic, prediabetic, or diabetic range? Is the fasting glucose consistent with this classification?",
+        "Summarize all findings from the ultrasound whole abdomen including the impression, and what further tests were advised?",
+        "What are the patient's lipid profile results and based on the clinical decision limits table in the report, classify each lipid parameter as optimal, borderline high, or high?",
     ]
 
     print("\n" + "=" * 60)
