@@ -14,3 +14,11 @@ Processing: 100%|█████████████████████
 WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
 E0000 00:00:1774535954.976942 2192153 dns_resolver_ares.cc:358] no server name supplied in dns URI
 E0000 00:00:1774535954.977023 2192153 legacy_channel.cc:89] channel stack builder failed: UNKNOWN: the target uri is not valid: dns:///
+
+
+
+curl -X POST https://ai.api.nvidia.com/v1/retrieval/nvidia/embeddings \
+  -H "Authorization: Bearer $NVIDIA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"input": ["test"], "model": "nvidia/nv-embedqa-e5-v5", "input_type": "query"}' \
+  | python3 -m json.tool
