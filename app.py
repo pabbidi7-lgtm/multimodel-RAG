@@ -11,3 +11,15 @@ curl -X POST https://ai.api.nvidia.com/v1/retrieval/nvidia/embeddings \
     "title": "Not Found",
     "detail": "Function '09c64e32-2b65-4892-a285-2f585408d118': Not found for account '38FN-XDcco9msc2defg-jUydEzvtOLO0B4O0UlrcXzw'"
 }
+
+
+
+
+
+
+export NVIDIA_API_KEY=nvapi-<new-key-from-build.nvidia.com>
+curl -X POST https://ai.api.nvidia.com/v1/retrieval/nvidia/embeddings \
+  -H "Authorization: Bearer $NVIDIA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"input": ["test"], "model": "nvidia/nv-embedqa-e5-v5", "input_type": "query"}' \
+  | python3 -m json.tool
