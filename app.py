@@ -23,3 +23,10 @@ curl -X POST https://ai.api.nvidia.com/v1/retrieval/nvidia/embeddings \
   -H "Content-Type: application/json" \
   -d '{"input": ["test"], "model": "nvidia/nv-embedqa-e5-v5", "input_type": "query"}' \
   | python3 -m json.tool
+
+
+curl -X POST https://ai.api.nvidia.com/v1/cv/nvidia/table-structure-recognition \
+  -H "Authorization: Bearer $NVIDIA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"test": "ping"}' \
+  | python3 -m json.tool
