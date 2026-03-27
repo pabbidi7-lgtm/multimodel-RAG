@@ -1,72 +1,96 @@
- uv pip show pymilvus milvus-lite
-Using Python 3.12.13 environment at: /home/clouduser01/micromamba/envs/myenv
-Name: milvus-lite
-Version: 2.4.12
-Location: /home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages
-Requires: tqdm
-Required-by: pymilvus
----
-Name: pymilvus
-Version: 2.5.4
-Location: /home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages
-Requires: grpcio, milvus-lite, pandas, protobuf, python-dotenv, setuptools, ujson
-Required-by: nv-ingest
-(myenv) clouduser01@AZRCIDEVNIVIDIA:~/jaswanth$ taskset -c 0-7 python pipeline.py
-2026-03-27 02:47:49.424036403 [W:onnxruntime:Default, device_discovery.cc:132 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/VMBUS:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename ""5620e0c7-8062-4dce-aeb7-520c7ef76171"" dit not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+
-INFO:nv_ingest_api.util.system.hardware_info:Detected 32 logical cores via psutil.
-INFO:nv_ingest_api.util.system.hardware_info:Detected 16 physical cores via psutil.
-INFO:nv_ingest_api.util.system.hardware_info:Detected 8 cores via os.sched_getaffinity.
-INFO:nv_ingest_api.util.system.hardware_info:Raw CPU limit determined: 8.00 (Method: sched_affinity)
-INFO:nv_ingest_api.util.system.hardware_info:Effective CPU core limit determined: 8.00 (Method: sched_affinity)
-INFO:nv_ingest.framework.orchestration.ray.util.pipeline.pipeline_runners:Launching pipeline in Python subprocess using multiprocessing.
-INFO:nv_ingest.framework.orchestration.ray.util.pipeline.pipeline_runners:Pipeline subprocess started (PID=2516595)
-Waiting for pipeline to initialize...
-Pipeline ready. Connecting client...
+import logging, os, time
 
-=== STEP 1: Basic text extraction ===
-Starting ingestion...
-Processing:   0%|                                                                                  | 0/1 [00:00<?, ?doc/s]INFO:nv_ingest_client.client.client:Starting batch processing for 1 jobs with batch size 32.
-Processing: 100%|██████████████████████████████████████████████████████████████████████████| 1/1 [00:31<00:00, 31.12s/doc]INFO:nv_ingest_client.client.client:Batch processing finished. Success: 1, Failures: 0. Total accounted for: 1/1
-Processing: 100%|██████████████████████████████████████████████████████████████████████████| 1/1 [00:31<00:00, 31.12s/doc]
-Total time: 31.12 seconds
+from nv_ingest.framework.orchestration.ray.util.pipeline.pipeline_runners import run_pipeline
+from nv_ingest.framework.orchestration.ray.util.pipeline.pipeline_runners import PipelineCreationSchema
+from nv_ingest_client.client import Ingestor, NvIngestClient
+from nv_ingest_api.util.message_brokers.simple_message_broker import SimpleClient
+from nv_ingest_client.util.process_json_files import ingest_json_results_to_blob
 
-Results:  1
-Failures: 0
+# Start the pipeline subprocess for library mode
+config = PipelineCreationSchema()
+run_pipeline(config, block=False, disable_dynamic_scaling=True, run_in_subprocess=True)
 
-=== STEP 1 SUCCEEDED ===
-Urine R/M Urine Sample
-Accession No: DEMO_BARCODE Collected On: 21-Jan-25 13:40 Received On: 21-Jan-25 14:31 Approved On: 21-Jan-25 17:23
-Observation Result Unit Biological Ref. Interval Method
-Physical Examination
-Urine Quantity 7.5 mL 7 - 8 Physical Examination
-Urine Colour Pale Yellow Pale Yellow Physical Examination
-Urinary Transparency Clear Clear Physical Examination
-Biochemical Examination
-Urinary pH 5.5 pH 6 .0 - 8.0 pH bromothymol blue
-Urinary Specific Gravity 1.025 1.005 - 1.0...
+client = NvIngestClient(
+    message_client_allocator=SimpleClient,
+    message_client_port=7671,
+    message_client_hostname="localhost"
+)
 
-=== STEP 2: Full pipeline (extract + split + caption + embed + vdb) ===
-Traceback (most recent call last):
-  File "/home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages/pymilvus/model/__init__.py", line 24, in _load_milvus_model
-    import milvus_model
-ModuleNotFoundError: No module named 'milvus_model'
+milvus_uri = "milvus.db"
+collection_name = "medical_docs"
+sparse = False
 
-The above exception was the direct cause of the following exception:
-
-Traceback (most recent call last):
-  File "/home/clouduser01/jaswanth/pipeline.py", line 108, in <module>
+# do content extraction from files
+ingestor = (
+    Ingestor(client=client)
+    .files("Docs/PK0016.pdf")
+    .extract(
+        extract_text=True,
+        extract_tables=True,
+        extract_charts=True,
+        extract_images=True,
+        table_output_format="markdown",
+        extract_infographics=True,
+        text_depth="page"
+    ).embed()
     .vdb_upload(
-     ^^^^^^^^^^^
-  File "/home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages/nv_ingest_client/client/interface.py", line 880, in vdb_upload
-    op_cls = get_vdb_op_cls(vdb_op)
-             ^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages/nv_ingest_client/util/vdb/__init__.py", line 13, in get_vdb_op_cls
-    from nv_ingest_client.util.vdb.milvus import Milvus
-  File "/home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages/nv_ingest_client/util/vdb/milvus.py", line 40, in <module>
-    from pymilvus.model.sparse import BM25EmbeddingFunction
-  File "/home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages/pymilvus/model/__init__.py", line 10, in __getattr__
-    self._load_milvus_model()
-  File "/home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages/pymilvus/model/__init__.py", line 33, in _load_milvus_model
-    raise ImportError(err_str) from e
-ImportError: The 'milvus_model' package is not installed. For installation, use 'pip install pymilvus[model]'. For more information, please visit https://github.com/milvus-io/milvus-model.
-Killed subprocess group 2516595
+        collection_name=collection_name,
+        milvus_uri=milvus_uri,
+        sparse=sparse,
+        dense_dim=2048
+    )
+)
+
+print("Starting ingestion..")
+t0 = time.time()
+results, failures = ingestor.ingest(show_progress=True, return_failures=True)
+t1 = time.time()
+print(f"Total time: {t1 - t0} seconds")
+
+print(ingest_json_results_to_blob(results[0]))
+
+if failures:
+    print(f"There were {len(failures)} failures. Sample: {failures[0]}")
+
+# =========================================================================
+#  RETRIEVAL + RAG
+# =========================================================================
+from openai import OpenAI
+from nv_ingest_client.util.milvus import nvingest_retrieval
+
+queries = [
+    "What are all the test results that are outside the normal biological reference interval?",
+    "Based on the kidney function test and eGFR classification table, what is the patient's GFR category?",
+    "What is the patient's HbA1c value and is this prediabetic or diabetic per ADA guidelines?",
+    "Summarize the ultrasound whole abdomen findings and what tests were advised?",
+    "What are the lipid profile results and classify each as optimal, borderline high, or high?",
+]
+
+llm_client = OpenAI(
+    base_url="https://integrate.api.nvidia.com/v1",
+    api_key=os.environ["NVIDIA_API_KEY"]
+)
+
+print("\n" + "=" * 60)
+for q in queries:
+    retrieved_docs = nvingest_retrieval(
+        [q],
+        collection_name,
+        milvus_uri=milvus_uri,
+        hybrid=sparse,
+        top_k=10,
+    )
+
+    extract = "\n\n".join([doc["entity"]["text"] for doc in retrieved_docs[0]])
+
+    prompt = f"Using the following content: {extract}\n\n Answer the user query: {q}"
+
+    completion = llm_client.chat.completions.create(
+        model="meta/llama-3.3-70b-instruct",
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=1024,
+    )
+
+    print(f"\nQ: {q}")
+    print(f"A: {completion.choices[0].message.content}")
+    print("-" * 60)
