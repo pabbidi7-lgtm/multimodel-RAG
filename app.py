@@ -1,190 +1,75 @@
-import logging, os, time
+taskset -c 0-7 python pipeline.py
+2026-03-27 02:38:57.407275009 [W:onnxruntime:Default, device_discovery.cc:132 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/VMBUS:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename ""5620e0c7-8062-4dce-aeb7-520c7ef76171"" dit not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+
+INFO:nv_ingest_api.util.system.hardware_info:Detected 32 logical cores via psutil.
+INFO:nv_ingest_api.util.system.hardware_info:Detected 16 physical cores via psutil.
+INFO:nv_ingest_api.util.system.hardware_info:Detected 8 cores via os.sched_getaffinity.
+INFO:nv_ingest_api.util.system.hardware_info:Raw CPU limit determined: 8.00 (Method: sched_affinity)
+INFO:nv_ingest_api.util.system.hardware_info:Effective CPU core limit determined: 8.00 (Method: sched_affinity)
+INFO:nv_ingest.framework.orchestration.ray.util.pipeline.pipeline_runners:Launching pipeline in Python subprocess using multiprocessing.
+INFO:nv_ingest.framework.orchestration.ray.util.pipeline.pipeline_runners:Pipeline subprocess started (PID=2499246)
+Waiting for pipeline to initialize...
+Pipeline ready. Connecting client...
 
-import pymilvus
-pymilvus.connections.disconnect("default")
+=== STEP 1: Basic text extraction ===
+Starting ingestion...
+Processing:   0%|                                                                                  | 0/1 [00:00<?, ?doc/s]INFO:nv_ingest_client.client.client:Starting batch processing for 1 jobs with batch size 32.
+Processing: 100%|██████████████████████████████████████████████████████████████████████████| 1/1 [00:31<00:00, 31.13s/doc]INFO:nv_ingest_client.client.client:Batch processing finished. Success: 1, Failures: 0. Total accounted for: 1/1
+Processing: 100%|██████████████████████████████████████████████████████████████████████████| 1/1 [00:31<00:00, 31.13s/doc]
+Total time: 31.13 seconds
 
-from nv_ingest.framework.orchestration.ray.util.pipeline.pipeline_runners import (
-    run_pipeline,
-    PipelineCreationSchema
-)
-from nv_ingest_client.client import Ingestor, NvIngestClient
-from nv_ingest_api.util.message_brokers.simple_message_broker import SimpleClient
-from nv_ingest_client.util.process_json_files import ingest_json_results_to_blob
+Results:  1
+Failures: 0
 
-# ------------ CONFIG ------------
-assert "NVIDIA_API_KEY" in os.environ, "Set env: export NVIDIA_API_KEY=..."
-NVIDIA_API_KEY = os.environ["NVIDIA_API_KEY"]
+=== STEP 1 SUCCEEDED ===
+Urine R/M Urine Sample
+Accession No: DEMO_BARCODE Collected On: 21-Jan-25 13:40 Received On: 21-Jan-25 14:31 Approved On: 21-Jan-25 17:23
+Observation Result Unit Biological Ref. Interval Method
+Physical Examination
+Urine Quantity 7.5 mL 7 - 8 Physical Examination
+Urine Colour Pale Yellow Pale Yellow Physical Examination
+Urinary Transparency Clear Clear Physical Examination
+Biochemical Examination
+Urinary pH 5.5 pH 6 .0 - 8.0 pH bromothymol blue
+Urinary Specific Gravity 1.025 1.005 - 1.0...
 
-# ------------ START PIPELINE ------------
-config = PipelineCreationSchema()
-
-run_pipeline(
-    config,
-    block=False,
-    disable_dynamic_scaling=True,
-    run_in_subprocess=True
-)
-
-print("Waiting for pipeline to initialize...")
-time.sleep(15)
-print("Pipeline ready. Connecting client...")
-
-client = NvIngestClient(
-    message_client_allocator=SimpleClient,
-    message_client_port=7671,
-    message_client_hostname="localhost"
-)
-
-milvus_uri = "milvus.db"
-collection_name = "medical_docs"
-sparse = False
-
-# =========================================================================
-#  STEP 1: Basic text extraction (sanity check)
-# =========================================================================
-print("\n=== STEP 1: Basic text extraction ===")
-
-ingestor = (
-    Ingestor(client=client)
-    .files("Docs/PK0016.pdf")
-    .extract(
-        extract_text=True,
-        extract_tables=False,
-        extract_charts=False,
-        extract_images=False,
-        extract_infographics=False,
-        text_depth="page",
-    )
-)
-
-print("Starting ingestion...")
-t0 = time.time()
-results, failures = ingestor.ingest(show_progress=True, return_failures=True)
-t1 = time.time()
-print(f"Total time: {t1 - t0:.2f} seconds")
-print(f"\nResults:  {len(results)}")
-print(f"Failures: {len(failures)}")
-
-if failures:
-    print("\n=== STEP 1 FAILURES ===")
-    for i, f in enumerate(failures):
-        print(f"--- [{i}] ---\n{f}")
-    print("\nFix Step 1 before proceeding.")
-
-elif results:
-    print("\n=== STEP 1 SUCCEEDED ===")
-    blob = ingest_json_results_to_blob(results[0])
-    print(blob[:500] + "..." if len(blob) > 500 else blob)
-
-    # =========================================================================
-    #  STEP 2: Full extraction + split + caption + embed + vdb upload
-    # =========================================================================
-    print("\n=== STEP 2: Full pipeline (extract + split + caption + embed + vdb) ===")
-
-    ingestor_full = (
-        Ingestor(client=client)
-        .files("Docs/PK0016.pdf")
-        .extract(
-            extract_text=True,
-            extract_tables=True,
-            extract_charts=True,
-            extract_images=True,
-            extract_infographics=True,
-            table_output_format="markdown",
-            text_depth="page",
-        )
-        .split(
-            tokenizer="meta-llama/Llama-3.2-1B",
-            chunk_size=512,
-            chunk_overlap=50,
-            params={"split_source_types": ["text", "table", "chart"]},
-        )
-        .caption(
-            endpoint_url="https://integrate.api.nvidia.com/v1/chat/completions",
-            model_name="nvidia/llama-3.1-nemotron-nano-vl-8b-v1",
-            api_key=NVIDIA_API_KEY,
-        )
-        .embed()
-        .vdb_upload(
-            collection_name=collection_name,
-            milvus_uri=milvus_uri,
-            sparse=sparse,
-            dense_dim=2048
-        )
-    )
-
-    print("Starting full ingestion...")
-    t0 = time.time()
+=== STEP 2: Full pipeline (extract + split + caption + embed + vdb) ===
+Starting full ingestion...
+Processing:   0%|                                                                                  | 0/1 [00:00<?, ?doc/s]INFO:nv_ingest_client.client.client:Starting batch processing for 1 jobs with batch size 32.
+Processing: 100%|██████████████████████████████████████████████████████████████████████████| 1/1 [00:31<00:00, 31.17s/doc]INFO:nv_ingest_client.client.client:Batch processing finished. Success: 1, Failures: 0. Total accounted for: 1/1
+Processing: 100%|██████████████████████████████████████████████████████████████████████████| 1/1 [00:31<00:00, 31.17s/doc]
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+E0000 00:00:1774579216.544735 2499106 dns_resolver_ares.cc:358] no server name supplied in dns URI
+E0000 00:00:1774579216.544831 2499106 legacy_channel.cc:89] channel stack builder failed: UNKNOWN: the target uri is not valid: dns:///
+^CTraceback (most recent call last):
+  File "/home/clouduser01/jaswanth/pipeline.py", line 118, in <module>
     results_full, failures_full = ingestor_full.ingest(show_progress=True, return_failures=True)
-    t1 = time.time()
-    print(f"Total time: {t1 - t0:.2f} seconds")
-    print(f"\nResults:  {len(results_full)}")
-    print(f"Failures: {len(failures_full)}")
-
-    if failures_full:
-        print("\n=== STEP 2 FAILURES ===")
-        for i, f in enumerate(failures_full):
-            print(f"--- [{i}] ---\n{f}")
-    else:
-        print("\n=== STEP 2 SUCCEEDED ===")
-        print(f"Embeddings stored in Milvus Lite: {milvus_uri}")
-        print(f"Collection: {collection_name}")
-
-        # =========================================================================
-        #  STEP 3: Retrieval + RAG queries
-        # =========================================================================
-        print("\n=== STEP 3: Querying ingested documents ===")
-
-        from openai import OpenAI
-        from nv_ingest_client.util.milvus import nvingest_retrieval
-
-        queries = [
-            "What are all the test results that are outside the normal biological reference interval?",
-            "Based on the kidney function test and eGFR classification table, what is the patient's GFR category?",
-            "What is the patient's HbA1c value and is this prediabetic or diabetic per ADA guidelines?",
-            "Summarize the ultrasound whole abdomen findings and what tests were advised?",
-            "What are the lipid profile results and classify each as optimal, borderline high, or high?",
-        ]
-
-        llm_client = OpenAI(
-            base_url="https://integrate.api.nvidia.com/v1",
-            api_key=NVIDIA_API_KEY
-        )
-
-        print("=" * 60)
-        for q in queries:
-            retrieved_docs = nvingest_retrieval(
-                [q],
-                collection_name,
-                milvus_uri=milvus_uri,
-                hybrid=sparse,
-                top_k=10,
-            )
-
-            if retrieved_docs and retrieved_docs[0]:
-                context = "\n\n".join([doc["entity"]["text"] for doc in retrieved_docs[0]])
-            else:
-                context = "No relevant content found."
-
-            prompt = f"""Use the following context to answer the question.
-If the answer is not in the context, say so.
-
-Context:
-{context}
-
-Question: {q}
-Answer:"""
-
-            completion = llm_client.chat.completions.create(
-                model="meta/llama-3.3-70b-instruct",
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=1024,
-                temperature=0.7,
-            )
-
-            print(f"\nQ: {q}")
-            print(f"A: {completion.choices[0].message.content}")
-            print("-" * 60)
-
-else:
-    print("\nNo results and no failures — unexpected state.")
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages/nv_ingest_client/client/interface.py", line 594, in ingest
+    self._vdb_bulk_upload.run(results)
+  File "/home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages/nv_ingest_client/util/vdb/milvus.py", line 1946, in run
+    self.create_index(collection_name=collection_name, **create_params)
+  File "/home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages/nv_ingest_client/util/vdb/milvus.py", line 1908, in create_index
+    return create_nvingest_collection(collection_name, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages/nv_ingest_client/util/vdb/milvus.py", line 447, in create_nvingest_collection
+    client = MilvusClient(milvus_uri)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages/pymilvus/milvus_client/milvus_client.py", line 88, in __init__
+    self._handler = self._manager.get_or_create(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages/pymilvus/client/connection_manager.py", line 472, in get_or_create
+    return self._create_shared(config, client, timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages/pymilvus/client/connection_manager.py", line 496, in _create_shared
+    handler._wait_for_channel_ready(timeout=timeout)
+  File "/home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages/pymilvus/client/grpc_handler.py", line 225, in _wait_for_channel_ready
+    grpc.channel_ready_future(self._channel).result(timeout=timeout)
+  File "/home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages/grpc/_utilities.py", line 162, in result
+    self._block(timeout)
+  File "/home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages/grpc/_utilities.py", line 102, in _block
+    self._condition.wait()
+  File "/home/clouduser01/micromamba/envs/myenv/lib/python3.12/threading.py", line 355, in wait
+    waiter.acquire()
+KeyboardInterrupt
+Killed subprocess group 2499246
+^C
