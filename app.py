@@ -188,7 +188,7 @@ def ensure_collection():
 if __name__ == "__main__":
     ensure_collection()
 
-    pdf = "./Docs/invoice-0-4.pdf"
+    pdf = "./Docs/minion-tech.pdf"
     chunks = ingest_document([pdf], output_dir="./temp_ingest")
 
     print(f"\nIngested {len(chunks)} chunks")
@@ -196,11 +196,11 @@ if __name__ == "__main__":
         print(" •", c["text"][:100].replace("\n", " ") + "...")
 
     queries = [
-        "What is the total amount due and break it down into subtotal, sales tax, and shipping charges?",
-        "List every item that has a unit price of exactly 34.99 and calculate their combined total",
-        "How many distinct purchase order numbers (BPXPO) are referenced across all line items and what are they?",
-        "If the customer wanted to reorder only items with quantity 25 or more at the same unit prices, what would the new subtotal be?",
-        "What is the salesperson's full name, contact phone number, and email address?",
+        "Using the balance sheet and profit & loss statement, calculate the debt-to-equity ratio and return on equity. Is the company financially healthy?",
+        "Compare the gross margin percentages of Freeze Ray, Rocket Boots, and Bubble Gun. Which product has the highest profit margin and which generates the most absolute profit?",
+        "From the cash flow statement, the company shows net income of $84,000 but the P&L shows $80,000. Explain this discrepancy and what the negative cash at beginning of period means.",
+        "The company wants $2 million investment and projects 25% revenue increase over 3 years. Calculate the projected revenue for each of the next 3 years and the total cumulative revenue.",
+        "Who reports to Felonius Gru in the organizational structure, what are their roles, and how many minions does each department have? What is the total headcount?",
     ]
     for q in queries:
         print(f"\nQ: {q}")
