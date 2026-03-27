@@ -17,13 +17,13 @@ client = NvIngestClient(
 )
 
 milvus_uri = "milvus.db"
-collection_name = "medical_docs"
+collection_name = "invoice_docs"
 sparse = False
 
 # do content extraction from files
 ingestor = (
     Ingestor(client=client)
-    .files("Docs/PK0016.pdf")
+    .files("Docs/invoice-0-4.pdf")
     .extract(
         extract_text=True,
         extract_tables=True,
@@ -59,11 +59,11 @@ from openai import OpenAI
 from nv_ingest_client.util.milvus import nvingest_retrieval
 
 queries = [
-    "What are all the test results that are outside the normal biological reference interval?",
-    "Based on the kidney function test and eGFR classification table, what is the patient's GFR category?",
-    "What is the patient's HbA1c value and is this prediabetic or diabetic per ADA guidelines?",
-    "Summarize the ultrasound whole abdomen findings and what tests were advised?",
-    "What are the lipid profile results and classify each as optimal, borderline high, or high?",
+    "What is the total amount due and break it down into subtotal, sales tax, and shipping charges?",
+    "List every item that has a unit price of exactly 34.99 and calculate their combined total",
+    "How many distinct purchase order numbers (BPXPO) are referenced across all line items and what are they?",
+    "If the customer wanted to reorder only items with quantity 25 or more at the same unit prices, what would the new subtotal be?",
+    "What is the salesperson's full name, contact phone number, and email address?",
 ]
 
 llm_client = OpenAI(
