@@ -1,198 +1,222 @@
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-LAYER 0 — CONFIGURATION (PipelineCreationSchema)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  NVIDIA_API_KEY → injected to ALL NIM endpoints
-  yolox_auth_token, paddle_auth_token, auth_token
-  broker: localhost:7671
-  taskset: cores 0-7 (prevents Ray conflict)
+import os
+import logging
+import socket
+import time
+from typing import List, Optional
+import requests
+from pymilvus import MilvusClient
+# from sentence_transformers import SentenceTransformer
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-LAYER 1 — NV-INGEST PIPELINE (extraction only)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  .load()
-    └─ page split + rasterize
-  .extract()
-    ├─ nemoretriever-page-elements-v2  → bbox per element
-    ├─ nemoretriever-ocr-v1            → text from regions
-    ├─ nemoretriever-table-structure-v1→ rows/cols/cells
-    └─ nemoretriever-graphic-elements-v1→ chart elements
-  .caption()
-    └─ nemotron-nano-vl-8b-v1          → image descriptions
+# ---------- Load .env ----------
+from dotenv import load_dotenv
+load_dotenv()
 
-  OUTPUT: raw JSON with content_type, bbox, page_number,
-          base64 image, captions — NO split/embed/vdb
+# ---------- NV-Ingest ----------
+from nv_ingest.framework.orchestration.ray.util.pipeline.pipeline_runners import (
+    run_pipeline,
+    PipelineCreationSchema,
+)
+from nv_ingest_client.client import Ingestor, NvIngestClient
+from nv_ingest_api.util.message_brokers.simple_message_broker import SimpleClient
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-LAYER 2 — METADATA ENRICHMENT (your code owns this)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Per chunk, attach:
+# ---------- Logging ----------
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s %(message)s",
+)
+logger = logging.getLogger(__name__)
 
-  CORE:
-    doc_id          → MD5(source_file + ingested_at)
-    chunk_id        → MD5(doc_id + page + type + text[:40])
-    content_type    → text / table / table_row / image / chart
-    page_number     → from NV-Ingest bbox metadata
-    source_file     → original filename
-    language        → detected or default "en"
+# ---------- Env ----------
+if "NVIDIA_API_KEY" not in os.environ:
+    raise RuntimeError("Set NVIDIA_API_KEY in .env")
+NVIDIA_API_KEY = os.environ["NVIDIA_API_KEY"]
+HF_TOKEN = os.environ.get("HUGGINGFACE_TOKEN")
 
-  TIME:
-    ingested_at     → datetime.utcnow().isoformat()
-    pipeline_version→ "nv-ingest-25.9.0"
-    embedding_model → "llama-3.2-nv-embedqa-1b-v2"
+# ---------- Milvus ----------
+MILVUS_DB = "/home/sneha-ltim/Document_Digitizer_backend/RAG_/milvus_rag.db"
+COLLECTION = "rag_documents"
+DIM = 1024
+milvus = MilvusClient(uri=MILVUS_DB)
 
-  SPATIAL:
-    bbox            → [x1, y1, x2, y2] from NV-Ingest
-    bbox_page_dims  → [page_w, page_h]
+# ---------- Wait for broker ----------
+def wait_for_broker(host="localhost", port=7671, timeout=120):
+    logger.info(f"Waiting for broker {host}:{port}…")
+    start = time.time()
+    while time.time() - start < timeout:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(1)
+        if s.connect_ex((host, port)) == 0:
+            s.close()
+            logger.info("Broker ready!")
+            return
+        s.close()
+        time.sleep(0.5)
+    raise RuntimeError("Broker timeout")
 
-  CONTENT-SPECIFIC:
-    [TEXT]
-      section_title → nearest heading above (y-coord scan)
-      word_count    → len(text.split())
+# ---------- Embedding ----------
+def embed_nvidia(texts: List[str]) -> List[List[float]]:
+    url = "https://integrate.api.nvidia.com/v1/embeddings"
+    payload = {
+        "model": "nvidia/nv-embedqa-e5-v5",
+        "input": texts,
+        "input_type": "query",
+    }
+    headers = {"Authorization": f"Bearer {NVIDIA_API_KEY}"}
+    r = requests.post(url, json=payload, headers=headers, timeout=60)
+    r.raise_for_status()
+    return [e["embedding"] for e in r.json()["data"]]
 
-    [TABLE]
-      table_id      → chunk_id of parent table
-      row_count     → number of data rows
-      col_count     → number of columns
-      headers       → list of column header strings
-      table_summary → first 200 chars of table
+def embed_fallback(texts: List[str]) -> List[List[float]]:
+    model = SentenceTransformer("intfloat/e5-large")
+    return model.encode(texts, normalize_embeddings=True).tolist()
 
-    [IMAGE/CHART]
-      image_type    → "raster" or "vector" (SVG detected)
-      caption       → VLM output
-      image_path    → S3/MinIO URL (not b64 in Milvus!)
-      width/height  → from bbox dims
+# ---------- INGESTION (NO SHUTDOWN NEEDED) ----------
+def ingest_document(file_paths: List[str], output_dir: Optional[str] = None) -> List[dict]:
+    logger.info(f"Ingesting: {file_paths}")
 
+    # Start pipeline (background)
+    cfg = PipelineCreationSchema()
+    run_pipeline(cfg, block=False, disable_dynamic_scaling=True, run_in_subprocess=True)
+    logger.info("Pipeline started...")
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-LAYER 3 — MILVUS (3 SEPARATE COLLECTIONS)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    wait_for_broker()
 
-  text_collection
-  ├── id (INT64, PK auto)
-  ├── embedding (FLOAT_VECTOR 2048)
-  ├── sparse_vector (SPARSE_FLOAT_VECTOR)
-  ├── text (VARCHAR 65535)
-  ├── doc_id (VARCHAR 64)         ← for dedup + filtering
-  ├── chunk_id (VARCHAR 32)
-  ├── page_number (INT64)
-  ├── section_title (VARCHAR 512)
-  ├── source_file (VARCHAR 512)
-  ├── language (VARCHAR 8)
-  ├── word_count (INT64)
-  ├── ingested_at (VARCHAR 32)
-  └── pipeline_version (VARCHAR 32)
+    client = NvIngestClient(
+        message_client_allocator=SimpleClient,
+        message_client_port=7671,
+        message_client_hostname="localhost",
+    )
 
-  table_collection
-  ├── id, embedding, sparse_vector
-  ├── text (full table markdown)
-  ├── doc_id, chunk_id, page_number, source_file
-  ├── table_id (VARCHAR 32)
-  ├── row_count (INT64)
-  ├── col_count (INT64)
-  ├── headers (VARCHAR 2048)      ← JSON encoded list
-  └── table_summary (VARCHAR 512)
+    ingestor = (
+        Ingestor(client=client)
+        .files(file_paths)
+        .load()
+        .extract(
+            extract_text=True,
+            extract_tables=True,
+            extract_charts=True,
+            extract_images=True,
+            extract_infographics=True,
+            table_output_format="markdown",
+            text_depth="page",
+        )
+        .split(
+            tokenizer="meta-llama/Llama-3.2-1B",
+            chunk_size=512,
+            chunk_overlap=50,
+            params={"split_source_types": ["text", "table", "chart"], "hf_access_token": HF_TOKEN},
+        )
+        .caption(
+            endpoint_url="https://integrate.api.nvidia.com/v1/chat/completions",
+            model_name="nvidia/llama-3.1-nemotron-nano-vl-8b-v1",
+            api_key=NVIDIA_API_KEY,
+        )
+        .embed(
+            endpoint_url="https://integrate.api.nvidia.com/v1",
+            model_name="nvidia/nv-embedqa-e5-v5",
+            api_key=NVIDIA_API_KEY,
+        )
+    )
 
-  image_collection
-  ├── id, embedding, sparse_vector
-  ├── text (caption, searchable)
-  ├── doc_id, chunk_id, page_number, source_file
-  ├── image_path (VARCHAR 1024)   ← S3/MinIO URL
-  ├── image_type (VARCHAR 16)     ← "raster" / "vector"
-  ├── caption (VARCHAR 4096)
-  ├── bbox (VARCHAR 256)
-  └── width, height (INT64)
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
+        ingestor = ingestor.save_to_disk(output_directory=output_dir, cleanup=True)
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-LAYER 4 — LANGGRAPH RAG AGENT (6 nodes, not 4-5)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    ingestor = ingestor.vdb_upload(
+        collection_name=COLLECTION,
+        milvus_uri=MILVUS_DB,
+        dense_dim=DIM,
+    )
 
-  NODE 1: query_classifier
-    Input : raw query string
-    Does  : LLM call (llama-3.3-70b, 256 tokens, temp=0)
-            classifies → {text, table, image, all}
-            also detects: needs_calculation, needs_comparison
-    Why   : avoids wasteful retrieval from wrong collections
-            "show me the chart" → image only (not text)
-            "total amount" → table first (not image)
-    Output: {collections: [...], query_type, intent}
+    # Run ingestion
+    results_lazy, failures = ingestor.ingest(show_progress=True, return_failures=True)
+    results = list(results_lazy) # Convert to real list
 
-  NODE 2: parallel_retriever (runs 3 sub-retrievals in parallel)
-    Input : query + collections list from node 1
-    Does  : asyncio.gather() → simultaneous retrieval from
-            whichever collections were flagged
-            Each: dense(top30) + sparse(top30) → RRF → top10
-    Why   : parallel not sequential = 3x lower latency
-            if image collection not needed, skip entirely
-    Output: {text_hits, table_hits, image_hits}
+    if failures:
+        logger.warning(f"{len(failures)} failures")
 
-  NODE 3: result_merger
-    Input : all hits from parallel retriever
-    Does  : merge with priority weighting:
-              table_hits  → weight 1.3  (structured data)
-              text_hits   → weight 1.0  (baseline)
-              image_hits  → weight 0.8  (supplementary)
-            deduplicate by chunk_id
-            limit to top 30 merged candidates
-    Why   : tables should score higher for factual queries
-            images are supporting context
-    Output: merged_candidates list
+    # Extract all chunks
+    flat = []
+    for doc in results:
+        if hasattr(doc, "chunks"):
+            for chunk in doc.chunks:
+                flat.append({
+                    "text": chunk.get("content", ""),
+                    "embedding": chunk.get("embedding", [])
+                })
 
-  NODE 4: reranker
-    Input : query + merged_candidates
-    Does  : llama-3.2-nv-rerankqa-1b-v2
-            scores each candidate with logit
-            classifies HIGH/MEDIUM/LOW confidence
-            if ALL candidates are LOW → triggers retry loop
-    Why   : cross-encoder sees query+passage together
-            catches semantic mismatches dense missed
-    Output: reranked_chunks + confidence_map
+    logger.info(f"Extracted {len(flat)} chunks → Milvus")
+    return flat
 
-  NODE 5: context_builder
-    Input : reranked_chunks (top 8)
-    Does  : builds structured prompt context:
-              [CHUNK | TYPE | PAGE | SOURCE | CONFIDENCE]
-              text chunks  → raw text
-              table chunks → markdown preserved
-              image chunks → caption + image_path reference
-            applies guardrails (injection, length check)
-    Why   : structure in context = better LLM grounding
-            type labels help LLM cite correctly
-    Output: formatted context string + source list
+# ---------- RETRIEVAL ----------
+def retrieve(query: str, top_k: int = 5) -> List[str]:
+    try:
+        q_emb = embed_nvidia([query])[0]
+    except Exception as e:
+        logger.warning(f"Embed failed: {e}, using fallback")
+        q_emb = embed_fallback([query])[0]
 
-  NODE 6: generator (with fallback + self-check loop)
-    Input : context + query
-    Does  :
-      1. Call PRIMARY: meta/llama-3.3-70b-instruct
-         temp=0.3, max_tokens=1024
-      2. Check answer for hallucination phrases
-      3. If hallucination detected OR primary fails:
-           → call FALLBACK: llama-3.1-nemotron-70b
-      4. If confidence was LOW from reranker:
-           → loop back to node 1 with reformulated query
-             (max 1 retry to prevent infinite loop)
-      5. Output guardrail check
-    Why   : self-correction loop = GPT-o1 style reasoning
-            single retry prevents hallucination amplification
-    Output: RAGResponse with answer, sources, confidence,
-            model_used, fallback_used, latency_ms
+    hits = milvus.search(
+        collection_name=COLLECTION,
+        data=[q_emb],
+        limit=top_k,
+        output_fields=["text"],
+    )[0]
+    return [h.entity.get("text") for h in hits]
 
-  EDGES (the LangGraph difference):
-    query_classifier → parallel_retriever
-    parallel_retriever → result_merger
-    result_merger → reranker
-    reranker → context_builder  (if HIGH/MEDIUM confidence)
-    reranker → query_classifier (if ALL LOW → retry once)
-    context_builder → generator
-    generator → END             (if answer OK)
-    generator → query_classifier (if hallucination → retry)
+# ---------- RAG (FIXED LLM ENDPOINT) ----------
+def rag_chatbot(query: str) -> str:
+    ctx = retrieve(query)
+    if not ctx:
+        return "No relevant info."
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-LAYER 5 — RESPONSE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  answer
-  model_used + fallback_used
-  confidence: HIGH / MEDIUM / LOW
-  sources: [{chunk_id, page, type, score, file}]
-  latency_ms (per node breakdown)
-  guardrail_flags
-  retry_count
+    prompt = f"Context:\n{' '.join(ctx)}\n\nQuestion: {query}\nAnswer:"
+
+    try:
+        r = requests.post(
+            "https://integrate.api.nvidia.com/v1/chat/completions", 
+            json={
+                "model": "meta/llama-3.2-90b-vision-instruct", 
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": 300,
+                "temperature": 0.7,
+            },
+            headers={"Authorization": f"Bearer {NVIDIA_API_KEY}"},
+            timeout=120,
+        )
+        r.raise_for_status()
+        return r.json()["choices"][0]["message"]["content"]
+    except Exception as e:
+        return f"LLM error: {e}"
+
+# ---------- MILVUS INIT ----------
+def ensure_collection():
+    if not milvus.has_collection(COLLECTION):
+        milvus.create_collection(
+            collection_name=COLLECTION,
+            dimension=DIM,
+            metric_type="L2",
+            auto_id=True,
+        )
+        logger.info("Created collection")
+    else:
+        logger.info("Collection exists")
+
+# ---------- MAIN ----------
+if __name__ == "__main__":
+    ensure_collection()
+
+    pdf = "/home/sneha-ltim/abrav/Document_Digitizer_backend/RAG_/Docs/BQ_GDD-000661395.pdf"
+    chunks = ingest_document([pdf], output_dir="./temp_ingest")
+
+    print(f"\nIngested {len(chunks)} chunks")
+    for c in chunks[:2]:
+        print(" •", c["text"][:100].replace("\n", " ") + "...")
+
+    queries = [
+        "When wa the agreement made?"
+       
+    ]
+    for q in queries:
+        print(f"\nQ: {q}")
+        print(f"A: {rag_chatbot(q)}")
