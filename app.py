@@ -1380,3 +1380,55 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
+
+
+
+
+
+
+
+
+
+https://arxiv.org/abs/2403.14403
+https://arxiv.org/abs/2401.15884
+https://arxiv.org/abs/2310.11511
+https://docs.langchain.com/oss/python/langgraph/overview
+
+
+Now — every node explained, where it came from, and why it exists
+Node 1: query_classifier
+Source paper: Adaptive-RAG (arXiv 2403.14403)
+The problem it solves: if someone asks "show me the revenue chart from page 4," and you search all three Milvus collections equally, you're wasting compute on text_collection and getting noise from it. Adaptive-RAG's classifier predicts query complexity and routes to the appropriate strategy — the simplest query goes to the simplest path, the complex query gets the full multi-step treatment. arXiv In our case, the classifier outputs which collections to target (text, table, image, or all) and sets dynamic weights for the merger. Querying only what you need also cuts latency by skipping irrelevant collections entirely.
+Why this node specifically and not something else: Because we have 3 separate Milvus collections. Without routing, every query hits all 3 regardless of content type. Routing is what makes 3 collections worthwhile in the first place.
+Node 2: parallel_retriever
+Source: engineering decision, not from a paper directly. It comes from the constraint that we have 3 collections and can query them with asyncio.gather() simultaneously instead of sequentially.
+The problem it solves: if you query text → then table → then image, you pay 3× the latency. Parallel execution means latency = max(slowest collection), not sum of all three. Each sub-retrieval does dense + BM25 sparse → RRF fusion internally, giving hybrid search results per collection.
+Why this node specifically: it's the minimum correct implementation of multi-collection retrieval. The alternative — one collection with a content_type filter — loses the schema separation benefit you specifically asked for.
+Node 3: result_merger
+Source: engineering decision that implements the weighting idea from Adaptive-RAG's routing output.
+The problem it solves: after parallel retrieval returns hits from 3 collections, you have 3 ranked lists. You need one ranked list. Simple score concatenation fails because dense cosine scores from different collections are not comparable — a score of 0.85 from text_collection and 0.85 from image_collection don't mean the same thing. The merger applies dynamic weights (set by the classifier in Node 1) and deduplicates by chunk_id.
+Why dynamic weights and not fixed: because the right weight depends on the query. If the classifier detected a chart-related query, image_collection results deserve higher weight. Fixed weights (table=1.3 always) would be wrong for a query about contract text.
+Node 4: reranker
+Source paper: CRAG (arXiv 2401.15884)
+The problem it solves: vector similarity finds chunks that are semantically close to the query embedding. But a cross-encoder reranker sees the full query text AND the full chunk text together and scores relevance much more accurately than embedding similarity alone. CRAG's retrieval evaluator returns a confidence degree — HIGH, MEDIUM, or LOW — based on which different retrieval actions are triggered. If all documents are rated low quality, CRAG triggers a corrective action rather than proceeding to generation. arXiv That is exactly what our reranker does: if all chunks come back LOW confidence, the edge routes back to Node 1 with a reformulated query (max 1 retry) rather than generating a hallucinated answer from bad context.
+Why this specific model (nv-rerankqa-mistral-4b-v3): because NVIDIA provides it as a cloud NIM, so no GPU needed, and it's a cross-encoder purpose-built for passage reranking.
+Node 5: generator
+Source paper: Self-RAG (arXiv 2310.11511)
+The problem it solves: even with good retrieval, an LLM can still hallucinate. Self-RAG generates reflection tokens that allow the model to assess whether retrieved passages are relevant (ISREL), whether they support the generation (ISSUP), and whether the output is useful (ISUSE). Selfrag We implement the spirit of this — not the trained reflection token mechanism, but the same idea in prompt-based form: after generating, check the answer for hallucination phrases ("as an AI," "based on my knowledge," etc.). If found, loop back to Node 1 once. The primary LLM is llama-3.3-70b, with automatic fallback to nemotron-70b if the primary fails. Context formatting (previously its own node) happens inside this node as a helper function — it needs no routing decision of its own.
+
+How to know what nodes to add, keep, or remove — the rule
+A node earns its place in a LangGraph agent if and only if it satisfies at least one of these two conditions:
+Condition 1: It makes a branching decision — the flow goes somewhere different based on what this node outputs. The classifier routes to different collections. The reranker routes to generator OR back to classifier. The generator routes to END or back to classifier. Every one of those is a real conditional edge in the graph.
+Condition 2: It calls an external tool or service — embedding API, Milvus, reranker API, LLM API. These are side effects that must be isolated to track latency, errors, and retries independently.
+If a step does neither of those things — it's just transforming data with no branching and no external call — it is a helper function inside an existing node, not its own node. That is why context_builder was dropped.
+
+The 3 papers in one table — for your lead presentation
+PaperWhat it solvesWhere it appears in our agentSelf-RAG (2310.11511)LLM self-reflection to catch hallucinationNode 5: hallucination check + retry loopCRAG (2401.15884)Evaluate retrieval quality before generatingNode 4: reranker + confidence + all-LOW retryAdaptive-RAG (2403.14403)Route query to correct retrieval strategyNode 1: query_classifier + dynamic weights
+Nodes 2 and 3 are engineering implementations of what those papers require — you need parallel retrieval to make Adaptive-RAG's routing efficient, and you need a merger to combine what parallel retrieval returns.
+
+How to master this yourself
+The reading order that actually builds understanding, not just familiarity:
+Read the three papers above in this sequence: Self-RAG first (gives you the mental model of what an agent is checking), then CRAG (gives you the concept of evaluating retrieval quality), then Adaptive-RAG (gives you the concept of routing). After those three, read the LangGraph conceptual guide at langchain-ai.github.io/langgraph/concepts specifically the section on state, nodes, and conditional edges — those three papers tell you what decisions to make; LangGraph tells you how to wire them into a graph. Then LangChain Academy's free course "Introduction to LangGraph" at academy.langchain.com is the hands-on implementation layer. Do it in that order and you'll understand not just how to build this agent, but why every edge in it exists.
