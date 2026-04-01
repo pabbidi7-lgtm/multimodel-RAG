@@ -5,11 +5,9 @@ import time
 from typing import List, Optional
 import requests
 from pymilvus import MilvusClient
-# from sentence_transformers import SentenceTransformer
 
-# ---------- Load .env ----------
-from dotenv import load_dotenv
-load_dotenv()
+import ray
+ray.init(num_cpus=8)
 
 # ---------- NV-Ingest ----------
 from nv_ingest.framework.orchestration.ray.util.pipeline.pipeline_runners import (
@@ -28,12 +26,11 @@ logger = logging.getLogger(__name__)
 
 # ---------- Env ----------
 if "NVIDIA_API_KEY" not in os.environ:
-    raise RuntimeError("Set NVIDIA_API_KEY in .env")
+    raise RuntimeError("Set NVIDIA_API_KEY in env")
 NVIDIA_API_KEY = os.environ["NVIDIA_API_KEY"]
-HF_TOKEN = os.environ.get("HUGGINGFACE_TOKEN")
 
 # ---------- Milvus ----------
-MILVUS_DB = "/home/sneha-ltim/Document_Digitizer_backend/RAG_/milvus_rag.db"
+MILVUS_DB = "./milvus_rag.db"
 COLLECTION = "rag_documents"
 DIM = 1024
 milvus = MilvusClient(uri=MILVUS_DB)
@@ -66,11 +63,7 @@ def embed_nvidia(texts: List[str]) -> List[List[float]]:
     r.raise_for_status()
     return [e["embedding"] for e in r.json()["data"]]
 
-def embed_fallback(texts: List[str]) -> List[List[float]]:
-    model = SentenceTransformer("intfloat/e5-large")
-    return model.encode(texts, normalize_embeddings=True).tolist()
-
-# ---------- INGESTION (NO SHUTDOWN NEEDED) ----------
+# ---------- INGESTION ----------
 def ingest_document(file_paths: List[str], output_dir: Optional[str] = None) -> List[dict]:
     logger.info(f"Ingesting: {file_paths}")
 
@@ -104,18 +97,14 @@ def ingest_document(file_paths: List[str], output_dir: Optional[str] = None) -> 
             tokenizer="meta-llama/Llama-3.2-1B",
             chunk_size=512,
             chunk_overlap=50,
-            params={"split_source_types": ["text", "table", "chart"], "hf_access_token": HF_TOKEN},
+            params={"split_source_types": ["text", "table", "chart"]},
         )
         .caption(
             endpoint_url="https://integrate.api.nvidia.com/v1/chat/completions",
             model_name="nvidia/llama-3.1-nemotron-nano-vl-8b-v1",
             api_key=NVIDIA_API_KEY,
         )
-        .embed(
-            endpoint_url="https://integrate.api.nvidia.com/v1",
-            model_name="nvidia/nv-embedqa-e5-v5",
-            api_key=NVIDIA_API_KEY,
-        )
+        .embed()
     )
 
     if output_dir:
@@ -130,7 +119,7 @@ def ingest_document(file_paths: List[str], output_dir: Optional[str] = None) -> 
 
     # Run ingestion
     results_lazy, failures = ingestor.ingest(show_progress=True, return_failures=True)
-    results = list(results_lazy) # Convert to real list
+    results = list(results_lazy)
 
     if failures:
         logger.warning(f"{len(failures)} failures")
@@ -150,11 +139,7 @@ def ingest_document(file_paths: List[str], output_dir: Optional[str] = None) -> 
 
 # ---------- RETRIEVAL ----------
 def retrieve(query: str, top_k: int = 5) -> List[str]:
-    try:
-        q_emb = embed_nvidia([query])[0]
-    except Exception as e:
-        logger.warning(f"Embed failed: {e}, using fallback")
-        q_emb = embed_fallback([query])[0]
+    q_emb = embed_nvidia([query])[0]
 
     hits = milvus.search(
         collection_name=COLLECTION,
@@ -162,9 +147,9 @@ def retrieve(query: str, top_k: int = 5) -> List[str]:
         limit=top_k,
         output_fields=["text"],
     )[0]
-    return [h.entity.get("text") for h in hits]
+    return [h["entity"].get("text") for h in hits]
 
-# ---------- RAG (FIXED LLM ENDPOINT) ----------
+# ---------- RAG ----------
 def rag_chatbot(query: str) -> str:
     ctx = retrieve(query)
     if not ctx:
@@ -174,11 +159,11 @@ def rag_chatbot(query: str) -> str:
 
     try:
         r = requests.post(
-            "https://integrate.api.nvidia.com/v1/chat/completions", 
+            "https://integrate.api.nvidia.com/v1/chat/completions",
             json={
-                "model": "meta/llama-3.2-90b-vision-instruct", 
+                "model": "meta/llama-3.3-70b-instruct",
                 "messages": [{"role": "user", "content": prompt}],
-                "max_tokens": 300,
+                "max_tokens": 1024,
                 "temperature": 0.7,
             },
             headers={"Authorization": f"Bearer {NVIDIA_API_KEY}"},
@@ -206,7 +191,7 @@ def ensure_collection():
 if __name__ == "__main__":
     ensure_collection()
 
-    pdf = "/home/sneha-ltim/abrav/Document_Digitizer_backend/RAG_/Docs/BQ_GDD-000661395.pdf"
+    pdf = "./Docs/minion-tech.pdf"
     chunks = ingest_document([pdf], output_dir="./temp_ingest")
 
     print(f"\nIngested {len(chunks)} chunks")
@@ -214,8 +199,11 @@ if __name__ == "__main__":
         print(" •", c["text"][:100].replace("\n", " ") + "...")
 
     queries = [
-        "When wa the agreement made?"
-       
+        "Using the balance sheet and profit & loss statement, calculate the debt-to-equity ratio and return on equity. Is the company financially healthy?",
+        "Compare the gross margin percentages of Freeze Ray, Rocket Boots, and Bubble Gun. Which product has the highest profit margin and which generates the most absolute profit?",
+        "From the cash flow statement, the company shows net income of $84,000 but the P&L shows $80,000. Explain this discrepancy and what the negative cash at beginning of period means.",
+        "The company wants $2 million investment and projects 25% revenue increase over 3 years. Calculate the projected revenue for each of the next 3 years and the total cumulative revenue.",
+        "Who reports to Felonius Gru in the organizational structure, what are their roles, and how many minions does each department have? What is the total headcount?",
     ]
     for q in queries:
         print(f"\nQ: {q}")
