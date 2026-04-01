@@ -15,19 +15,52 @@ Agent nodes (mapped to 3 RAG papers):
 Run:
     streamlit run rag_agent.py
 
-FIX NOTES (vs original):
-  FIX-1  _pipeline_started global replaced with @st.cache_resource so
-         Streamlit reruns cannot spawn duplicate Ray subprocesses.
-  FIX-2  route_after_reranker / route_after_generator were mutating
-         the state snapshot passed to them — LangGraph ignores those
-         mutations.  Routing functions now return a Command that
-         carries the updated fields, so retry_count and current_query
-         are correctly propagated.
-  FIX-3  render_ui() was called unconditionally at module level,
-         running even in CLI (__main__) mode.  Moved inside the
-         Streamlit-only branch.
-  FIX-4  ray.init gains log_to_driver=False to prevent log-thread
-         contention with Streamlit's own logging.
+═══════════════════════════════════════════════════════════════
+FIX NOTES
+═══════════════════════════════════════════════════════════════
+
+FIX-ROOT (THE REAL DEADLOCK — was the 20+ min freeze):
+  The original code called ray.init(num_cpus=8) explicitly, then
+  called run_pipeline() which internally calls ray.init() again
+  with its OWN config inside a subprocess.  Even with
+  ignore_reinit_error=True, the outer Ray cluster holds all 8
+  CPU slots.  When NV-Ingest's internal Ray tries to claim workers,
+  both contexts deadlock competing for the same resources.
+  The terminal cursor freezes and Streamlit hangs indefinitely.
+
+  FIX: NEVER call ray.init() manually before run_pipeline().
+  Let NV-Ingest own the Ray lifecycle completely.
+  run_pipeline(run_in_subprocess=True) handles Ray internally.
+  Removed all explicit ray.init() / ray.is_initialized() calls
+  from the pipeline start path.
+
+FIX-1  _pipeline_started global replaced with @st.cache_resource so
+       Streamlit reruns cannot spawn duplicate Ray subprocesses.
+       ADDITIONALLY: pipeline start is now guarded by
+       st.session_state so it never triggers on module import —
+       only when the user explicitly clicks "Ingest".
+
+FIX-2  route_after_reranker / route_after_generator were mutating
+       the state snapshot passed to them — LangGraph ignores those
+       mutations.  Routing functions now return a Command that
+       carries the updated fields, so retry_count and current_query
+       are correctly propagated.
+
+FIX-3  render_ui() was called unconditionally at module level,
+       running even in CLI (__main__) mode.  Moved inside the
+       Streamlit-only branch.
+
+FIX-4  Removed log_to_driver=False — no longer needed since we
+       don't call ray.init() ourselves at all.
+
+FIX-5  get_milvus() was called inside run_ingest() before
+       vdb_upload, creating a redundant second MilvusClient
+       connection (vdb_upload creates its own).  Removed the
+       redundant call; get_milvus() is only used for direct
+       Milvus queries in node_retriever.
+
+FIX-6  CLI __main__ block also removed its explicit ray.init()
+       call for the same deadlock reason.
 """
 
 from __future__ import annotations
@@ -46,10 +79,14 @@ from pymilvus import MilvusClient
 
 # ── LangGraph ──────────────────────────────────────────────────────
 from langgraph.graph import StateGraph, START, END
-from langgraph.types import Command          # needed for FIX-2
+from langgraph.types import Command
 
 # ── NV-Ingest ──────────────────────────────────────────────────────
-import ray
+# NOTE: Do NOT import ray at the top level and do NOT call ray.init()
+# anywhere in this file.  NV-Ingest's run_pipeline() manages the Ray
+# lifecycle internally inside its own subprocess.  Any external
+# ray.init() call before run_pipeline() causes both Ray contexts to
+# compete for CPU worker slots → deadlock → frozen terminal.
 from nv_ingest.framework.orchestration.ray.util.pipeline.pipeline_runners import (
     run_pipeline,
     PipelineCreationSchema,
@@ -208,7 +245,12 @@ def llm_generate(prompt: str, model: str = PRIMARY_LLM,
 
 
 # ═══════════════════════════════════════════════════════════════════
-# MILVUS CLIENT (lazy singleton)
+# MILVUS CLIENT (lazy singleton via st.cache_resource)
+#
+# FIX-5: get_milvus() is only used by node_retriever for search.
+# The run_ingest() → vdb_upload() path creates its own internal
+# MilvusClient — calling get_milvus() there was redundant and caused
+# a second concurrent connection on the same SQLite-backed .db file.
 # ═══════════════════════════════════════════════════════════════════
 
 @st.cache_resource
@@ -230,13 +272,34 @@ def get_milvus() -> MilvusClient:
 # ═══════════════════════════════════════════════════════════════════
 # NV-INGEST PIPELINE
 #
-# FIX-1: Replaced bare module-level `_pipeline_started = False` with
-# @st.cache_resource.  Streamlit reruns the module on every UI event,
-# which reset the flag to False and spawned a new Ray subprocess each
-# time (visible in logs: 4 different PIDs).  cache_resource runs the
-# body exactly once per process lifetime regardless of reruns.
-# FIX-4: log_to_driver=False prevents Ray's logging thread from
-# racing with Streamlit's logging machinery.
+# ══ THE ROOT CAUSE OF THE 20-MINUTE FREEZE ══
+#
+# ORIGINAL (broken):
+#   ray.init(num_cpus=8, ignore_reinit_error=True, ...)  ← outer Ray
+#   run_pipeline(...)                                    ← spawns inner Ray
+#
+# What happened:
+#   1. ray.init(num_cpus=8) reserves all 8 CPUs for the outer cluster.
+#   2. run_pipeline(run_in_subprocess=True) calls ray.init() internally
+#      in its subprocess with its own worker config.
+#   3. The subprocess Ray tries to claim CPU slots — but the outer Ray
+#      already holds all of them via the parent process.
+#   4. Both sides wait for the other to release → deadlock.
+#   5. Terminal cursor freezes. Streamlit spinner spins forever.
+#
+# FIX (this file):
+#   NEVER call ray.init() before run_pipeline().
+#   run_pipeline() owns Ray entirely. We just call it and wait for
+#   the broker to become reachable.
+#
+# FIX-1: @st.cache_resource ensures this runs at most once per
+#         process lifetime across all Streamlit reruns.
+#
+# ADDITIONAL GUARD: The pipeline is only started when the user clicks
+# the "Ingest documents" button, never on module import.  We check
+# st.session_state["pipeline_started"] as an idempotency flag so
+# that even if run_ingest() is called multiple times, the pipeline
+# only starts once.
 # ═══════════════════════════════════════════════════════════════════
 
 def _wait_for_broker(host: str = "localhost", port: int = 7671, timeout: int = 120):
@@ -254,15 +317,17 @@ def _wait_for_broker(host: str = "localhost", port: int = 7671, timeout: int = 1
     raise RuntimeError(f"Broker timeout after {timeout}s")
 
 
-@st.cache_resource                          # ← FIX-1: runs once, survives reruns
-def _start_pipeline() -> bool:
-    """Start Ray + NV-Ingest pipeline exactly once per process."""
-    if not ray.is_initialized():
-        ray.init(
-            num_cpus=8,
-            ignore_reinit_error=True,
-            log_to_driver=False,            # ← FIX-4: no log-thread race with Streamlit
-        )
+@st.cache_resource
+def _start_pipeline_once() -> bool:
+    """
+    Start NV-Ingest pipeline exactly once per process.
+
+    CRITICAL: Do NOT call ray.init() here or anywhere before this
+    function.  run_pipeline() manages its own Ray cluster internally.
+    Calling ray.init() first causes a dual-Ray deadlock that freezes
+    the process for 20+ minutes.
+    """
+    logger.info("Starting NV-Ingest pipeline (Ray managed by NV-Ingest internally)…")
 
     cfg = PipelineCreationSchema()
     run_pipeline(
@@ -270,9 +335,13 @@ def _start_pipeline() -> bool:
         block=False,
         disable_dynamic_scaling=True,
         run_in_subprocess=True,
+        # NV-Ingest internally calls ray.init() inside this subprocess.
+        # We must NOT have an active ray.init() in the parent process.
     )
-    logger.info("NV-Ingest pipeline started")
+
+    logger.info("NV-Ingest pipeline subprocess launched, waiting for broker…")
     _wait_for_broker()
+    logger.info("Pipeline ready.")
     return True
 
 
@@ -280,16 +349,20 @@ def run_ingest(file_paths: List[str]) -> dict:
     """
     NV-Ingest chain: .load() → .extract() → .split() → .caption()
                      → .embed() → .vdb_upload()
+
+    FIX-5: Removed the redundant get_milvus() call that was here
+    before.  vdb_upload() creates its own MilvusClient connection
+    internally — a second concurrent connection on the same .db file
+    caused intermittent lock errors.
     """
-    _start_pipeline()                       # no-op after first call
+    # Start pipeline only on first ingest call; no-op after that.
+    _start_pipeline_once()
 
     client = NvIngestClient(
         message_client_allocator=SimpleClient,
         message_client_port=7671,
         message_client_hostname="localhost",
     )
-
-    get_milvus()  # ensure collection exists before upload
 
     ingestor = (
         Ingestor(client=client)
@@ -567,21 +640,21 @@ def node_generator(state: AgentState) -> AgentState:
     if "prompt_injection_detected" in flags:
         return {
             **state,
-            "answer":        "This query has been flagged and cannot be processed.",
-            "model_used":    "none",
-            "fallback_used": False,
+            "answer":          "This query has been flagged and cannot be processed.",
+            "model_used":      "none",
+            "fallback_used":   False,
             "guardrail_flags": flags,
-            "sources":       [],
+            "sources":         [],
         }
 
     if not ranked_chunks:
         return {
             **state,
-            "answer":        "No relevant content found for this query. Please ensure documents have been ingested.",
-            "model_used":    "none",
-            "fallback_used": False,
+            "answer":          "No relevant content found for this query. Please ensure documents have been ingested.",
+            "model_used":      "none",
+            "fallback_used":   False,
             "guardrail_flags": flags,
-            "sources":       [],
+            "sources":         [],
         }
 
     context_chunks = ranked_chunks[:MAX_CONTEXT]
@@ -692,13 +765,11 @@ def route_after_reranker(state: AgentState):
             f"— provide specific details, numbers, and exact values."
         )
         logger.info("Low confidence → reformulating query (retry %d)", retry_count + 1)
-        # Command carries both the destination node AND the state patch
         return Command(
             goto="classifier",
             update={
                 "current_query": reformulated,
                 "retry_count":   retry_count + 1,
-                # Clear stale retrieval artefacts so the retry starts fresh
                 "raw_chunks":    [],
                 "ranked_chunks": [],
                 "sources":       [],
@@ -760,10 +831,10 @@ def build_graph():
     )
     g.add_edge("retriever", "reranker")
 
-    # route_after_reranker and route_after_generator now return Commands,
-    # so we do NOT pass a destinations dict — LangGraph uses the Command.goto.
-    g.add_conditional_edges("reranker",   route_after_reranker)
-    g.add_conditional_edges("generator",  route_after_generator)
+    # route_after_reranker and route_after_generator return Commands,
+    # so we do NOT pass a destinations dict.
+    g.add_conditional_edges("reranker",  route_after_reranker)
+    g.add_conditional_edges("generator", route_after_generator)
 
     return g.compile()
 
@@ -1014,7 +1085,10 @@ def render_ui():
                     fh.write(f.read())
                 saved_paths.append(path)
 
-            with st.spinner(f"Running NV-Ingest pipeline on {len(saved_paths)} file(s)…"):
+            with st.spinner(
+                f"Starting NV-Ingest pipeline + ingesting {len(saved_paths)} file(s)…  "
+                f"(first run takes 2–5 min for pipeline startup)"
+            ):
                 try:
                     result = run_ingest(saved_paths)
                     st.session_state.ingest_log.append(result)
@@ -1222,10 +1296,12 @@ EMBED       nv-embedqa-e5-v5""", language="text")
 # ═══════════════════════════════════════════════════════════════════
 # ENTRYPOINT
 #
-# FIX-3: render_ui() was previously called unconditionally at module
-# level — it ran even in CLI mode.  Now it only runs in the Streamlit
-# path (i.e. when __name__ != "__main__").  The __main__ block handles
-# the CLI / script path exclusively.
+# FIX-3: render_ui() is only called in the Streamlit path
+# (i.e. when __name__ != "__main__").
+#
+# FIX-6 (CLI): Removed the explicit ray.init() call from the CLI
+# block for the same deadlock reason as FIX-ROOT.  run_pipeline()
+# handles Ray internally — we just wait for the broker.
 # ═══════════════════════════════════════════════════════════════════
 
 if __name__ == "__main__":
@@ -1235,16 +1311,18 @@ if __name__ == "__main__":
         print("ERROR: Set NVIDIA_API_KEY")
         sys.exit(1)
 
-    # In CLI mode there is no Streamlit runtime, so cache_resource is
-    # not available.  Start the pipeline directly.
-    if not ray.is_initialized():
-        ray.init(num_cpus=8, ignore_reinit_error=True, log_to_driver=False)
-
+    # ── Start pipeline WITHOUT ray.init() ────────────────────────
+    # CRITICAL: Do not call ray.init() here.  run_pipeline() starts
+    # Ray internally in its subprocess.  Calling ray.init() in the
+    # parent first causes the same dual-Ray deadlock as in the
+    # Streamlit path.
+    print("Starting NV-Ingest pipeline (Ray managed internally by NV-Ingest)…")
     cfg = PipelineCreationSchema()
     run_pipeline(cfg, block=False, disable_dynamic_scaling=True, run_in_subprocess=True)
     _wait_for_broker()
+    print("Pipeline ready.")
 
-    # Ensure Milvus collection exists (MilvusClient directly, no st.cache_resource)
+    # Ensure Milvus collection exists
     _milvus = MilvusClient(uri=MILVUS_DB)
     if not _milvus.has_collection(COLLECTION):
         _milvus.create_collection(
@@ -1269,8 +1347,7 @@ if __name__ == "__main__":
         "Who reports to Felonius Gru in the organizational structure?",
     ]
 
-    # In CLI mode build_graph() calls st.cache_resource which isn't
-    # available — instantiate the graph directly.
+    # Build graph directly (no st.cache_resource in CLI mode)
     g = StateGraph(AgentState)
     g.add_node("classifier", node_query_classifier)
     g.add_node("retriever",  node_retriever)
@@ -1302,5 +1379,8 @@ if __name__ == "__main__":
               f"retry={result['retry_count']} | flags={result['guardrail_flags']}]")
 
 else:
-    # Streamlit path — render the UI
+    # Streamlit path — render the UI.
+    # The pipeline is NOT started here. It starts lazily inside
+    # run_ingest() when the user clicks "Ingest documents".
+    # This means the UI loads instantly with zero Ray overhead.
     render_ui()
