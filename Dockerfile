@@ -17,6 +17,9 @@ from langgraph.graph import END, START, StateGraph
 
 load_dotenv()
 
+ingest_files: list[str] = [
+]
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
@@ -123,7 +126,9 @@ def print_answer(answer, confidence, wall_ms, model, retry_count, sources, laten
 
 
 # ── Files to ingest on startup ──────────────────────────────────────────────
-INGEST_FILES: List[str] = []
+INGEST_FILES: List[str] = [
+    "Docs/Oxford.pdf"
+]
 
 NVIDIA_API_KEY = os.environ.get("NVIDIA_API_KEY", "")
 HF_TOKEN = os.environ.get("HUGGINGFACE_TOKEN", "")
@@ -393,6 +398,17 @@ def _start_pipeline_once():
     pok(f"Pipeline ready ({time.time() - t0:.1f}s)")
 
 
+def _close_milvus():
+    """Release the local Milvus Lite file lock before NV-Ingest opens its own connection."""
+    global _milvus_client
+    if _milvus_client is not None:
+        try:
+            _milvus_client.close()
+        except Exception:
+            pass
+        _milvus_client = None
+
+
 def run_ingest(file_paths: List[str], reset: bool = False):
     from nv_ingest_api.util.message_brokers.simple_message_broker import SimpleClient
     from nv_ingest_client.client import Ingestor, NvIngestClient
@@ -401,6 +417,10 @@ def run_ingest(file_paths: List[str], reset: bool = False):
 
     if reset:
         reset_collection()
+
+    # Milvus Lite (local .db) allows only one connection at a time.
+    # Release our handle so NV-Ingest's vdb_upload can open its own connection.
+    _close_milvus()
 
     pstatus(f"Ingesting {len(file_paths)} file(s)...")
     for file_path in file_paths:
