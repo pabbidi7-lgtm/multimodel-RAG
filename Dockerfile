@@ -512,3 +512,387 @@
     image reasoning at query time.
   - GPU helps only if you also redesign the system to use a vision model over actual page/figure images during retrieval
     or generation.
+--------------------------------------------------------------------------------------------------------------------------
+
+
+Current Architecture
+
+                        INGESTION PHASE
+  ┌──────────────────────────────────────────────────────────────────────┐
+  │  File(s)                                                            │
+  │    PDF / DOCX / PPTX / XLSX / images                                │
+  └──────────────────────────────────────────────────────────────────────┘
+                                 │
+                                 ▼
+  ┌──────────────────────────────────────────────────────────────────────┐
+  │ NV-Ingest                                                            │
+  │  1. load()                                                           │
+  │  2. extract(text, tables, charts, images, infographics)             │
+  │  3. split(text/table/chart chunks)                                  │
+  │  4. caption(visuals -> text description)                            │
+  │  5. embed(all chunks)                                               │
+  │  6. vdb_upload()                                                    │
+  └──────────────────────────────────────────────────────────────────────┘
+                                 │
+                                 ▼
+  ┌──────────────────────────────────────────────────────────────────────┐
+  │ Milvus                                                               │
+  │ Stores mostly text-like chunks + embeddings                          │
+  │ Current code retrieves only: text                                    │
+  └──────────────────────────────────────────────────────────────────────┘
+
+
+                        QUERY / AGENT PHASE
+  START
+    │
+    ▼
+  [N1 guardrail]
+    - clean query
+    - detect injection
+    - detect likely intent
+    │
+    ▼
+  [N2 expander]
+    - original query
+    - 2 paraphrases
+    │
+    ▼
+  [N3 retriever]
+    - embed each variant
+    - Milvus ANN search
+    - merge + dedupe chunks
+    │
+    ▼
+  [N4 reranker]
+    - cross-encoder scores query/chunk pairs
+    - assigns high/medium/low confidence
+    - optional quality gate
+    │
+    ▼
+  [N5 generator]
+    - last 3 turns of memory
+    - top 6 chunks
+    - primary LLM, fallback LLM
+    │
+    ▼
+   END
+
+  Why This Version Works Better For Text And Tables
+
+  - Text survives ingestion almost directly.
+  - Tables can be serialized into markdown-like text, which LLMs handle well.
+  - Retrieval and reranking are both text-based.
+  - The final LLM answers from text chunks, so if the source is already textual, the pipeline is aligned.
+
+  Why It Struggles With Images / Charts / Diagrams
+
+  - Images are converted into captions, not preserved as first-class evidence for QA.
+  - The agent does not retrieve page images or figure crops at query time.
+  - The generator never sees pixels, only caption/extracted text.
+  - Fine visual details get lost:
+      - spatial layout
+      - arrow direction
+      - legend/color mapping
+      - exact bar/line relationships
+      - small labels inside figures
+
+  So the weakness is not “NV-Ingest is bad.” It is that your system is caption-grounded instead of vision-grounded.
+
+  Why Use NV-Ingest At All
+
+  NV-Ingest is still the right choice here because it solves the hard ingestion layer:
+
+  - OCR / text extraction
+  - table extraction
+  - chart/image extraction hooks
+  - chunking
+  - caption generation
+  - embedding pipeline integration
+  - vector DB upload
+
+  Without it, you would need to build a full enterprise document parsing pipeline yourself.
+
+  What NV-Ingest gives you:
+
+  - multimodal preprocessing
+
+  What it does not automatically give you:
+
+  - GPT/Claude-style visual reasoning at answer time
+
+  ———
+
+  Recommended v3
+
+  This is the minimum serious upgrade.
+
+  INGEST
+    PDF
+     │
+     ▼
+  [Parser / NV-Ingest]
+    - text chunks
+    - table chunks
+    - figure crops
+    - page images
+    - chart regions
+    - captions
+    - OCR per visual region
+     │
+     ▼
+  [Indexing Layer]
+    - child chunks:
+        text chunk
+        table chunk
+        caption chunk
+        OCR chunk
+        chart-data chunk
+    - parent objects:
+        page
+        figure
+        section
+     │
+     ▼
+  [Milvus + Metadata Store]
+    Store:
+    - embedding
+    - text
+    - file_path
+    - page_num
+    - figure_id
+    - section_title
+    - source_type
+    - bbox
+    - parent_page_id
+
+  Query graph:
+
+  START
+    │
+    ▼
+  [N1 guardrail]
+    │
+    ▼
+  [N2 intent router]
+    - text / table / figure / chart / diagram / mixed
+    │
+    ▼
+  [N3 query expander]
+    │
+    ▼
+  [N4 hybrid retrieval]
+    - dense retrieval
+    - sparse/BM25 retrieval
+    - metadata filters
+    - parent-child join
+    │
+    ▼
+  [N5 modality reranker]
+    - text rerank
+    - table preference if table query
+    - figure preference if figure query
+    │
+    ▼
+  [N6 evidence builder]
+    Build final bundle:
+    - top chunks
+    - linked figure caption
+    - linked nearby paragraph
+    - page image / figure crop if needed
+    │
+    ▼
+  [N7 answerer]
+    - text-only LLM if enough
+    - vision LLM if visual grounding needed
+    │
+    ▼
+   END
+
+  What v3 fixes
+
+  - keeps figure/page metadata
+  - links chunks back to pages/figures
+  - adds BM25 from the start
+  - lets answer step escalate to vision only when needed
+
+  ———
+
+  Recommended v4: GPT/Claude-like Multimodal RAG
+
+  This is the version you actually want for complex PDFs.
+
+                           MULTIMODAL INGEST
+  PDF
+   │
+   ├─ page rasterization --------------------------------------┐
+   ├─ text extraction                                          │
+   ├─ table extraction                                         │
+   ├─ chart/figure detection                                   │
+   ├─ OCR on figure regions                                    │
+   └─ caption / structured visual summary                      │
+                                                               ▼
+                       ┌───────────────────────────────────────────────┐
+                       │ Unified Evidence Store                        │
+                       │                                               │
+                       │ text chunks                                   │
+                       │ tables                                        │
+                       │ captions                                      │
+                       │ OCR snippets                                  │
+                       │ chart data / axes / legends                   │
+                       │ figure crops                                  │
+                       │ page images                                   │
+                       │ metadata: page, bbox, section, figure id      │
+                       └───────────────────────────────────────────────┘
+
+  Query graph:
+
+  START
+    │
+    ▼
+  [N1 guardrail]
+    │
+    ▼
+  [N2 query understanding]
+    - classify:
+      factual text?
+      table lookup?
+      chart reading?
+      diagram reasoning?
+      mixed?
+    │
+    ▼
+  [N3 decomposition]
+    Example:
+    "What does Figure 3 show and what warning is given in nearby text?"
+    becomes:
+    - find Figure 3
+    - inspect figure
+    - inspect nearby text
+    - combine
+    │
+    ▼
+  [N4 retrieval planner]
+    choose evidence types:
+    - text chunks
+    - tables
+    - page image
+    - figure crop
+    - OCR region
+    - caption
+    │
+    ▼
+  [N5 retrieval]
+    - dense + sparse + metadata + figure/page lookup
+    │
+    ▼
+  [N6 evidence fusion]
+    assemble one grounded bundle:
+    - page 12 figure crop
+    - caption
+    - nearby paragraph
+    - OCR labels
+    - section heading
+    │
+    ▼
+  [N7 multimodal reasoner]
+    vision-capable model reads:
+    - image(s)
+    - text evidence
+    - user question
+    │
+    ▼
+  [N8 grounded answer + citations]
+    - answer
+    - page number
+    - figure id
+    - confidence by evidence type
+    │
+    ▼
+   END
+
+  Why this feels like GPT/Claude
+
+  - it can inspect the actual figure at answer time
+  - it combines text and image evidence in one reasoning step
+  - it cites page/figure-level evidence
+  - it does not depend on caption quality alone
+
+  ———
+
+  Exact Improvements I’d Make
+
+  1. Store metadata in Milvus or sidecar DB:
+
+  - file_path
+  - page_num
+  - figure_id
+  - bbox
+  - section_title
+  - source_type
+  - parent_id
+
+  2. Change retrieval output from just text to full evidence objects.
+  3. Add page rasterization and figure crops during ingest.
+  4. Run OCR on figure regions, not only full-page text extraction.
+  5. Add chart-structure extraction if charts matter:
+
+  - title
+  - axis labels
+  - legend labels
+  - bar/line labels
+
+  6. Use true hybrid retrieval:
+
+  - dense
+  - BM25
+  - metadata filter
+  - reciprocal rank fusion
+
+  7. Add a visual-escalation rule:
+
+  - if question mentions figure/chart/diagram/image/layout/color/arrow/legend
+  - answer with a vision model over retrieved page/figure images
+
+  8. Make confidence evidence-based:
+
+  - retrieval confidence
+  - visual grounding confidence
+  - citation completeness
+  - not just reranker score
+
+  ———
+
+  Confidence Design In Better Form
+
+  Your current confidence is:
+
+  - based on reranker score only
+
+  That is useful but incomplete.
+
+  A better enterprise confidence model is:
+
+  final_confidence =
+    retrieval_score
+    + citation_completeness
+    + modality_match
+    + agreement_between_text_and_visual_evidence
+    - ambiguity_penalty
+
+  Example:
+
+  - High retrieval score but no figure crop for a chart question -> confidence should drop
+  - Medium retrieval score but direct figure grounding + nearby text agreement -> confidence can rise
+
+  ———
+
+  Practical Answer To “Do I Need GPU?”
+
+  - For current v2: not necessarily. It is mostly text-RAG plus preprocessing.
+  - For v3/v4 with local vision reasoning: yes, GPU becomes very useful.
+  - If you use hosted multimodal APIs, local GPU is less necessary, but architecture changes are still required.
+
+  So GPU is not the first blocker.
+  The first blocker is that the current system does not retrieve and reason over visual evidence directly.
+
+  ———
