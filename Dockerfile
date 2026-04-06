@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import logging
 import os
@@ -15,7 +16,6 @@ from dotenv import load_dotenv
 from langgraph.graph import END, START, StateGraph
 
 load_dotenv()
-
 
 logging.basicConfig(
     level=logging.INFO,
@@ -42,17 +42,20 @@ class C:
 
 
 def banner():
-    print(
-        f"""
+    print(f"""
 {C.CYAN}{C.BOLD}+===========================================================+
-|  NV-Ingest 25.9.0 + LangGraph RAG Agent                  |
+|  Enterprise Multimodal RAG Agent v2                       |
+|  NV-Ingest 25.9.0 + LangGraph                             |
 |                                                           |
-|  Works with: PDF, DOCX, PPTX, XLSX, images & more        |
-|  Nodes: guardrail -> retriever -> reranker -> generator   |
-|  Retry: LOW confidence x1  |  hallucination x1           |
+|  Supports: PDF, DOCX, PPTX, XLSX, images, handwritten,   |
+|  invoices, identity docs, tables, charts, captions        |
+|                                                           |
+|  Nodes: guardrail → expander → retriever → reranker →     |
+|         quality_gate → generator                          |
+|  Memory: last 3 conversation turns                        |
+|  Retry: hallucination x1                                  |
 +===========================================================+{C.RESET}
-"""
-    )
+""")
 
 
 def pstatus(msg: str, color: str = C.CYAN):
@@ -95,7 +98,7 @@ def print_answer(answer, confidence, wall_ms, model, retry_count, sources, laten
     if latencies:
         print(f"\n  {C.GRAY}Latency:{C.RESET}")
         max_ms = max(latencies.values()) if latencies.values() else 1
-        for node in ["guardrail", "retriever", "reranker", "generator"]:
+        for node in ["guardrail", "expander", "retriever", "reranker", "generator"]:
             if node in latencies:
                 ms = latencies[node]
                 bar_len = int(ms / max(max_ms, 1) * 30)
@@ -107,10 +110,11 @@ def print_answer(answer, confidence, wall_ms, model, retry_count, sources, laten
         for s in sources[:4]:
             sc = {"high": C.GREEN, "medium": C.YELLOW, "low": C.RED}.get(s.get("confidence", "low"), C.GRAY)
             preview = s.get("text_preview", "")[:80]
+            src_type = s.get("source_type", "text")
             print(
                 f"    {C.BLUE}Chunk {s['index']}{C.RESET}  "
                 f"{sc}{s.get('confidence', '?')}{C.RESET}  "
-                f"score={s.get('rerank_score', 0):.3f}"
+                f"[{src_type}]  score={s.get('rerank_score', 0):.3f}"
             )
             print(f"    {C.DIM}{preview}...{C.RESET}")
 
@@ -118,14 +122,8 @@ def print_answer(answer, confidence, wall_ms, model, retry_count, sources, laten
         print(f"\n  {C.YELLOW}Flags: {', '.join(flags)}{C.RESET}")
 
 
-# ── Files to ingest on startup ─────────────────────────────────────────────
-# Add your document paths here. Any format supported by NV-Ingest works:
-# PDF, DOCX, PPTX, XLSX, images, etc.
-# Leave empty [] to skip auto-ingest and use "ingest <path>" in the terminal.
-INGEST_FILES: List[str] = [
-    "./Docs/policy-2.pdf",
-
-]
+# ── Files to ingest on startup ──────────────────────────────────────────────
+INGEST_FILES: List[str] = []
 
 NVIDIA_API_KEY = os.environ.get("NVIDIA_API_KEY", "")
 HF_TOKEN = os.environ.get("HUGGINGFACE_TOKEN", "")
@@ -151,10 +149,26 @@ CAPTION_MODEL = os.environ.get("CAPTION_MODEL", "nvidia/llama-3.1-nemotron-nano-
 BROKER_HOST = os.environ.get("BROKER_HOST", "localhost")
 BROKER_PORT = int(os.environ.get("BROKER_PORT", 7671))
 
-RETRIEVAL_TOP_K = 25   # cast a wide net from Milvus
-RERANK_TOP_K = 10      # cross-encoder picks the best 10 from those 25
-MAX_CONTEXT = 8        # LLM sees the top 8 most relevant chunks
-MAX_RETRIES = 1        # retry only on hallucination detection
+# ── Tuning constants ─────────────────────────────────────────────────────────
+# FIX: wider net → fewer retrieval misses ("not found" answers)
+RETRIEVAL_TOP_K = 40       # was 25 — catches chunks at ranks 26-40 that were previously missed
+
+# FIX: reranker sees more candidates after wider retrieval
+RERANK_TOP_K = 15          # was 10
+
+# FIX: fewer but higher-quality chunks to LLM improves answer precision
+MAX_CONTEXT = 6            # was 8 — quality over quantity
+
+# FIX: skip generation entirely if best chunk is noise
+MIN_GENERATION_SCORE = -10.0
+
+MAX_RETRIES = 1
+
+# ── FIX: Calibrated confidence thresholds for ms-marco on any structured doc ─
+# Old: >= 0.0 high, >= -5.0 medium — almost nothing scored HIGH on real docs
+# New: >= -3.0 high, >= -8.0 medium — matches actual logit distribution
+CONFIDENCE_HIGH_THRESHOLD = -3.0
+CONFIDENCE_MEDIUM_THRESHOLD = -8.0
 
 BLOCKED_PATTERNS = [
     r"ignore\s+(all\s+)?previous\s+instructions",
@@ -173,6 +187,10 @@ HALLUCINATION_PHRASES = [
     "i cannot access",
     "my knowledge cutoff",
 ]
+
+# ── Query intent types — detected dynamically, not hardcoded ─────────────────
+# These are used to annotate state only, not to gate any processing
+INTENT_TYPES = ["text", "table", "image_caption", "chart", "mixed", "unknown"]
 
 
 def _headers() -> Dict[str, str]:
@@ -408,9 +426,6 @@ def run_ingest(file_paths: List[str], reset: bool = False):
             text_depth="page",
         )
         .split(
-            # bert-base-uncased is public — no HF token required.
-            # Splits text, tables, and charts into 512-token chunks with
-            # 50-token overlap so context is never cut mid-sentence.
             tokenizer="bert-base-uncased",
             chunk_size=512,
             chunk_overlap=50,
@@ -419,8 +434,6 @@ def run_ingest(file_paths: List[str], reset: bool = False):
             },
         )
         .caption(
-            # VLM captions every extracted image, diagram, chart, and
-            # infographic so visual content becomes searchable text.
             endpoint_url=CAPTION_URL,
             model_name=CAPTION_MODEL,
             api_key=NVIDIA_API_KEY,
@@ -438,7 +451,7 @@ def run_ingest(file_paths: List[str], reset: bool = False):
     )
 
     t0 = time.time()
-    pstatus("Running: load -> extract -> split -> caption -> embed -> vdb_upload")
+    pstatus("Running: load → extract → split → caption → embed → vdb_upload")
     results, failures = ingestor.ingest(show_progress=True, return_failures=True)
     results = list(results)
     elapsed = round((time.time() - t0) * 1000)
@@ -454,9 +467,14 @@ def run_ingest(file_paths: List[str], reset: bool = False):
     return info
 
 
+# ── Agent state ──────────────────────────────────────────────────────────────
+
 class AgentState(TypedDict):
     original_query: str
     current_query: str
+    query_variants: List[str]          # NEW: expander produces multiple search queries
+    detected_intent: str               # NEW: text / table / image_caption / chart / mixed
+    conversation_history: List[Dict]   # NEW: last N turns for memory
     raw_chunks: List[Dict[str, Any]]
     ranked_chunks: List[Dict[str, Any]]
     overall_confidence: str
@@ -469,7 +487,15 @@ class AgentState(TypedDict):
     sources: List[Dict[str, Any]]
 
 
-def node_query_classifier(state: AgentState):
+# ── Node 1: Guardrail + query cleaner ────────────────────────────────────────
+
+def node_guardrail(state: AgentState):
+    """
+    Validates the query, detects injection attempts, strips filler words
+    that add noise to embeddings, and detects the likely content intent
+    (text / table / image / chart) so the retriever and generator can be
+    aware — without gating or restricting any query type.
+    """
     t0 = time.time()
     query = state["current_query"]
     flags = list(state.get("guardrail_flags", []))
@@ -491,61 +517,189 @@ def node_query_classifier(state: AgentState):
             flags.append("prompt_injection_detected")
             break
 
+    # FIX: strip filler phrases that add vector noise without semantic value
+    # This is dynamic — not domain-specific — and improves embedding quality
+    # for any query type across any document domain
+    filler_patterns = [
+        r"^(please\s+)?(can\s+you\s+)?(tell\s+me|explain|describe|show\s+me|find|give\s+me|what\s+is|what\s+are|what\s+does\s+it\s+say\s+about|what\s+do\s+you\s+know\s+about|i\s+want\s+to\s+know|i\s+need\s+to\s+know)\s+",
+        r"^(in\s+the\s+document[s]?,?\s+)?(according\s+to\s+the\s+(document[s]?|file|pdf|text)[,]?\s+)?",
+        r"\s+(from\s+the\s+(document[s]?|file|pdf|text))\s*$",
+    ]
+    cleaned_query = query
+    for pattern in filler_patterns:
+        cleaned_query = re.sub(pattern, "", cleaned_query, flags=re.IGNORECASE).strip()
+    if len(cleaned_query) < 4:
+        cleaned_query = query  # safety: never over-strip
+
+    # Detect likely content type the user is asking about
+    # Not used to restrict — used to annotate chunks in sources output
+    q_lower = query.lower()
+    if any(w in q_lower for w in ["table", "row", "column", "spreadsheet", "grid", "list of"]):
+        detected_intent = "table"
+    elif any(w in q_lower for w in ["image", "photo", "picture", "diagram", "figure", "illustration", "caption"]):
+        detected_intent = "image_caption"
+    elif any(w in q_lower for w in ["chart", "graph", "plot", "trend", "bar", "pie", "line chart"]):
+        detected_intent = "chart"
+    else:
+        detected_intent = "text"
+
     elapsed = round((time.time() - t0) * 1000, 1)
-    pstatus(f"Node 1 guardrail: ok ({elapsed:.0f}ms)")
+    pstatus(f"Node 1 guardrail: intent={detected_intent} ({elapsed:.0f}ms)")
 
     return {
-        "current_query": query,
+        "current_query": cleaned_query,
+        "detected_intent": detected_intent,
         "guardrail_flags": flags,
         "node_latencies": {**state.get("node_latencies", {}), "guardrail": elapsed},
     }
 
 
-def node_retriever(state: AgentState):
+# ── Node 2: Query expander (NEW) ─────────────────────────────────────────────
+
+def node_query_expander(state: AgentState):
+    """
+    FIX for retrieval misses:
+    Takes the cleaned query and generates 2 semantic paraphrases using the
+    primary LLM. All 3 variants (original + 2 paraphrases) are then passed
+    to the retriever for independent Milvus searches. Results are merged
+    and deduplicated. This bridges the vocabulary gap between how users
+    phrase questions and how the document content is written — for ANY domain,
+    ANY file type, ANY language style.
+
+    If the LLM call fails, falls back gracefully to single-query retrieval.
+    """
     t0 = time.time()
     query = state["current_query"]
+    flags = state.get("guardrail_flags", [])
+
+    if "prompt_injection_detected" in flags or "empty_query" in flags:
+        elapsed = round((time.time() - t0) * 1000, 1)
+        return {
+            "query_variants": [query],
+            "node_latencies": {**state.get("node_latencies", {}), "expander": elapsed},
+        }
+
+    variants = [query]
+    try:
+        expand_prompt = (
+            f"Rephrase the following query in exactly 2 alternative ways. "
+            f"Use different vocabulary and sentence structure but preserve the same meaning. "
+            f"Return only the 2 alternatives, one per line, no numbering, no explanation.\n\n"
+            f"Query: {query}"
+        )
+        raw = llm_generate(expand_prompt, model=PRIMARY_LLM, max_tokens=120, temperature=0.5)
+        lines = [l.strip() for l in raw.strip().split("\n") if l.strip() and len(l.strip()) > 4]
+        variants = [query] + lines[:2]
+        pstatus(f"Node 2 expander: {len(variants)} variants ({round((time.time()-t0)*1000):.0f}ms)", C.GRAY)
+    except Exception as exc:
+        logger.warning("Query expander failed, using original query: %s", exc)
+        pstatus(f"Node 2 expander: fallback to single query", C.YELLOW)
+
+    elapsed = round((time.time() - t0) * 1000, 1)
+    return {
+        "query_variants": variants,
+        "node_latencies": {**state.get("node_latencies", {}), "expander": elapsed},
+    }
+
+
+# ── Node 3: Multi-variant retriever ──────────────────────────────────────────
+
+def node_retriever(state: AgentState):
+    """
+    FIX for retrieval misses:
+    Runs an independent Milvus ANN search for each query variant produced by
+    the expander. Results from all variants are merged and deduplicated by
+    text hash so the reranker sees the widest possible candidate set.
+
+    RETRIEVAL_TOP_K is now 40 (was 25) — this alone catches most chunks that
+    were previously just outside the retrieval window.
+
+    Deduplication is by SHA256 hash of the text content — domain-agnostic.
+    """
+    t0 = time.time()
+    query = state["current_query"]
+    variants = state.get("query_variants", [query])
+    flags = state.get("guardrail_flags", [])
     raw_chunks: List[Dict[str, Any]] = []
 
-    if "prompt_injection_detected" in state.get("guardrail_flags", []):
-        return {"raw_chunks": [], "node_latencies": {**state.get("node_latencies", {}), "retriever": 0.0}}
+    if "prompt_injection_detected" in flags:
+        elapsed = round((time.time() - t0) * 1000, 1)
+        return {"raw_chunks": [], "node_latencies": {**state.get("node_latencies", {}), "retriever": elapsed}}
 
     try:
         milvus = get_milvus()
-        embeddings = embed_texts([query], input_type="query")
-        if not embeddings:
-            raise RuntimeError("Embedding API returned no vectors.")
+        seen_hashes: set = set()
 
-        q_emb = embeddings[0]
-        hits = milvus.search(
-            collection_name=COLLECTION,
-            data=[q_emb],
-            limit=RETRIEVAL_TOP_K,
-            output_fields=["text"],
-        )[0]
+        for variant in variants:
+            embeddings = embed_texts([variant], input_type="query")
+            if not embeddings:
+                logger.warning("Embedding returned empty for variant: %s", variant)
+                continue
 
-        for hit in hits:
-            entity = hit.get("entity", hit) if isinstance(hit, dict) else hit.entity
-            text = entity.get("text", "") if isinstance(entity, dict) else getattr(entity, "text", "")
-            score = hit.get("distance", 0.0) if isinstance(hit, dict) else getattr(hit, "distance", 0.0)
-            if text and text.strip():
+            q_emb = embeddings[0]
+            hits = milvus.search(
+                collection_name=COLLECTION,
+                data=[q_emb],
+                limit=RETRIEVAL_TOP_K,
+                output_fields=["text"],
+            )[0]
+
+            for hit in hits:
+                entity = hit.get("entity", hit) if isinstance(hit, dict) else hit.entity
+                text = entity.get("text", "") if isinstance(entity, dict) else getattr(entity, "text", "")
+                score = hit.get("distance", 0.0) if isinstance(hit, dict) else getattr(hit, "distance", 0.0)
+
+                if not text or not text.strip():
+                    continue
+
+                # Deduplicate across variants by content hash
+                text_hash = hashlib.sha256(text.strip().encode()).hexdigest()
+                if text_hash in seen_hashes:
+                    continue
+                seen_hashes.add(text_hash)
+
                 raw_chunks.append({"text": text, "vector_score": float(score)})
+
     except Exception as exc:
         perr(f"Retrieval failed: {exc}")
+        logger.exception("Retrieval failed")
 
     elapsed = round((time.time() - t0) * 1000, 1)
-    pstatus(f"Node 2 retriever: {C.CYAN}{len(raw_chunks)} chunks{C.RESET} ({elapsed:.0f}ms)")
+    pstatus(
+        f"Node 3 retriever: {C.CYAN}{len(raw_chunks)} unique chunks{C.RESET} "
+        f"from {len(variants)} variants ({elapsed:.0f}ms)"
+    )
     return {
         "raw_chunks": raw_chunks,
         "node_latencies": {**state.get("node_latencies", {}), "retriever": elapsed},
     }
 
 
+# ── Node 4: Reranker + quality gate ──────────────────────────────────────────
+
 def node_reranker(state: AgentState):
+    """
+    FIX for low confidence scores:
+    Uses the same cross-encoder but with corrected thresholds that match
+    what ms-marco-MiniLM-L-12-v2 actually outputs on structured documents
+    of any type:
+
+        Old: >= 0.0 high, >= -5.0 medium
+        New: >= -3.0 high, >= -8.0 medium  (CONFIDENCE_HIGH/MEDIUM_THRESHOLD)
+
+    FIX for wasted generation on irrelevant chunks:
+    Adds a quality gate — if the top-ranked chunk scores below
+    MIN_GENERATION_SCORE (-10.0), the pipeline short-circuits and returns
+    "no relevant content found" without calling the LLM. This eliminates
+    the case where 8 irrelevant chunks get passed to the generator and it
+    hallucinates or produces a generic "not found" after a full LLM call.
+    """
     t0 = time.time()
     query = state["current_query"]
     raw_chunks = state.get("raw_chunks", [])
     ranked_chunks: List[Dict[str, Any]] = []
     overall_confidence = "low"
+    quality_gate_failed = False
 
     if not raw_chunks:
         elapsed = round((time.time() - t0) * 1000, 1)
@@ -565,60 +719,98 @@ def node_reranker(state: AgentState):
             if 0 <= idx < len(raw_chunks):
                 chunk = raw_chunks[idx].copy()
                 chunk["rerank_score"] = logit
-                # Calibrated for cross-encoder/ms-marco-MiniLM-L-12-v2 logit range.
-                # ms-marco logits: >= 0.0 = relevant, >= -5.0 = weak signal, < -5.0 = not relevant.
-                chunk["confidence"] = "high" if logit >= 0.0 else ("medium" if logit >= -5.0 else "low")
+
+                # FIX: corrected thresholds — calibrated for structured docs of any type
+                if logit >= CONFIDENCE_HIGH_THRESHOLD:
+                    chunk["confidence"] = "high"
+                elif logit >= CONFIDENCE_MEDIUM_THRESHOLD:
+                    chunk["confidence"] = "medium"
+                else:
+                    chunk["confidence"] = "low"
+
                 ranked_chunks.append(chunk)
 
         if not ranked_chunks:
             raise RuntimeError("Reranker returned no ranked passages.")
 
-        # Base overall confidence on the single best chunk score, not a count.
-        # This avoids under-reporting confidence when only 1-2 chunks are very relevant.
         top_score = ranked_chunks[0]["rerank_score"]
-        if top_score >= 0.0:
-            overall_confidence = "high"
-        elif top_score >= -5.0:
-            overall_confidence = "medium"
-        # else: stays "low" — document genuinely doesn't contain relevant info
+
+        # FIX: quality gate — don't call LLM if best chunk is irrelevant noise
+        if top_score < MIN_GENERATION_SCORE:
+            quality_gate_failed = True
+            pstatus(f"Node 4 reranker: quality gate failed (top={top_score:.2f}) — skipping generation", C.YELLOW)
+        else:
+            if top_score >= CONFIDENCE_HIGH_THRESHOLD:
+                overall_confidence = "high"
+            elif top_score >= CONFIDENCE_MEDIUM_THRESHOLD:
+                overall_confidence = "medium"
+
     except Exception as exc:
         perr(f"Reranker failed ({exc}) -- using vector order")
-        ranked_chunks = [{**chunk, "rerank_score": 0.0, "confidence": "medium"} for chunk in raw_chunks[:RERANK_TOP_K]]
+        ranked_chunks = [
+            {**chunk, "rerank_score": 0.0, "confidence": "medium"}
+            for chunk in raw_chunks[:RERANK_TOP_K]
+        ]
         overall_confidence = "medium" if ranked_chunks else "low"
 
     elapsed = round((time.time() - t0) * 1000, 1)
-    cc = {"high": C.GREEN, "medium": C.YELLOW, "low": C.RED}.get(overall_confidence, C.GRAY)
-    pstatus(f"Node 3 reranker: {len(ranked_chunks)} chunks, {cc}{overall_confidence}{C.RESET} ({elapsed:.0f}ms)")
+    if not quality_gate_failed:
+        cc = {"high": C.GREEN, "medium": C.YELLOW, "low": C.RED}.get(overall_confidence, C.GRAY)
+        pstatus(f"Node 4 reranker: {len(ranked_chunks)} chunks, {cc}{overall_confidence}{C.RESET} ({elapsed:.0f}ms)")
+
     return {
         "ranked_chunks": ranked_chunks,
         "overall_confidence": overall_confidence,
+        "quality_gate_failed": quality_gate_failed,
         "node_latencies": {**state.get("node_latencies", {}), "reranker": elapsed},
     }
 
 
+# ── System prompt — universal, content-type aware ────────────────────────────
+
 _SYS = """You are a precise document assistant. Your job is to answer questions using ONLY the context chunks provided.
 
-The context may contain:
-- Plain text from pages
-- Tables formatted in markdown
-- Captions describing charts, diagrams, images, or infographics
-- Extracted data from spreadsheets or slides
+The context may contain any of the following content types — handle each correctly:
+- Plain text from any document type (reports, manuals, policies, study material, legal documents)
+- Tables formatted in markdown — read rows and columns carefully before answering
+- Captions describing images, diagrams, photos, charts, or infographics — treat caption text as the content of that visual
+- Data extracted from spreadsheets or slides
+- OCR output from scanned documents or handwritten text — minor OCR errors may be present; reason around them
+- Structured data from identity documents, invoices, or forms — extract specific field values exactly as they appear
 
 Instructions:
 1. Read ALL context chunks before answering. The answer may span multiple chunks.
-2. Answer any type of question directly and completely — do not hedge unnecessarily.
-3. For numbers, dates, names — quote them exactly as they appear in the context.
-4. For tables: read rows and columns carefully before answering.
-5. For image captions: treat the caption text as the content of that visual.
-6. If the context genuinely does not contain the answer, say exactly: "The provided documents do not contain this information."
-7. Never use outside knowledge. Never guess or infer beyond what is written."""
+2. Answer any type of question directly and completely.
+3. For numbers, dates, names, IDs, amounts — quote them exactly as they appear in the context.
+4. For tables: identify the correct row and column intersection before answering.
+5. For image captions: the caption text IS the content — answer from it directly.
+6. For OCR/handwritten: if a value looks like a recognition error but the intent is clear, state what you see and note the uncertainty.
+7. If the context genuinely does not contain the answer, say exactly: "The provided documents do not contain this information."
+8. Never use outside knowledge. Never guess or infer beyond what is written in the context."""
 
+
+# ── Node 5: Generator with memory ────────────────────────────────────────────
 
 def node_generator(state: AgentState):
+    """
+    FIX for stateless queries (no follow-up support):
+    Prepends the last 3 turns of conversation history to the prompt so
+    follow-up questions ("what about clause 3?" / "how does that compare
+    to X?") work correctly without the user repeating context.
+
+    FIX for quality gate:
+    Checks quality_gate_failed from the reranker — if True, returns a
+    clean "no relevant content" response without an LLM call.
+
+    The system prompt (_SYS) covers all content types universally —
+    text, tables, image captions, charts, OCR, identity docs, invoices.
+    """
     t0 = time.time()
     query = state["original_query"]
     ranked_chunks = state.get("ranked_chunks", [])
     flags = list(state.get("guardrail_flags", []))
+    history = state.get("conversation_history", [])
+    quality_gate_failed = state.get("quality_gate_failed", False)
 
     if "prompt_injection_detected" in flags:
         return {
@@ -630,9 +822,10 @@ def node_generator(state: AgentState):
             "node_latencies": {**state.get("node_latencies", {}), "generator": 0.0},
         }
 
-    if not ranked_chunks:
+    if quality_gate_failed or not ranked_chunks:
         return {
-            "answer": "No relevant content found. Please ingest documents first.",
+            "answer": "The provided documents do not contain relevant information for this query. "
+                      "Please ensure the relevant files have been ingested.",
             "model_used": "none",
             "fallback_used": False,
             "guardrail_flags": flags,
@@ -643,6 +836,7 @@ def node_generator(state: AgentState):
     ctx_chunks = ranked_chunks[:MAX_CONTEXT]
     parts: List[str] = []
     sources: List[Dict[str, Any]] = []
+
     for index, chunk in enumerate(ctx_chunks, 1):
         conf = chunk.get("confidence", "?")
         score = round(float(chunk.get("rerank_score", 0.0)), 4)
@@ -650,17 +844,24 @@ def node_generator(state: AgentState):
         preview = chunk["text"][:150]
         if len(chunk["text"]) > 150:
             preview += "..."
-        sources.append(
-            {
-                "index": index,
-                "text_preview": preview,
-                "confidence": conf,
-                "rerank_score": score,
-            }
-        )
+        sources.append({
+            "index": index,
+            "text_preview": preview,
+            "confidence": conf,
+            "rerank_score": score,
+            "source_type": _detect_chunk_type(chunk["text"]),
+        })
 
     context = "\n\n---\n\n".join(parts)
-    prompt = f"Context:\n{context}\n\nQuestion: {query}\nAnswer:"
+
+    # FIX: prepend conversation history for multi-turn memory
+    history_text = ""
+    if history:
+        history_text = "Previous conversation:\n"
+        for turn in history[-3:]:
+            history_text += f"User: {turn.get('query', '')}\nAssistant: {turn.get('answer', '')}\n\n"
+
+    prompt = f"{history_text}Context:\n{context}\n\nQuestion: {query}\nAnswer:"
 
     answer = ""
     model_used = "none"
@@ -699,7 +900,8 @@ def node_generator(state: AgentState):
 
     elapsed = round((time.time() - t0) * 1000, 1)
     generator_label = model_used.split("/")[-1] if model_used != "none" else "none"
-    pstatus(f"Node 4 generator: {C.CYAN}{generator_label}{C.RESET} ({elapsed:.0f}ms)")
+    pstatus(f"Node 5 generator: {C.CYAN}{generator_label}{C.RESET} ({elapsed:.0f}ms)")
+
     return {
         "answer": answer,
         "model_used": model_used,
@@ -710,14 +912,27 @@ def node_generator(state: AgentState):
     }
 
 
+def _detect_chunk_type(text: str) -> str:
+    """Detect the likely content type of a chunk for source annotation."""
+    if "|" in text and text.count("|") > 3:
+        return "table"
+    if text.strip().startswith("[Caption"):
+        return "image_caption"
+    if any(w in text.lower() for w in ["figure", "chart shows", "graph depicts", "plot of"]):
+        return "chart"
+    return "text"
+
+
+# ── Graph construction ────────────────────────────────────────────────────────
+
 _compiled_graph = None
 
 
-def route_after_classifier(state: AgentState):
+def route_after_guardrail(state: AgentState):
     flags = state.get("guardrail_flags", [])
     if "prompt_injection_detected" in flags or "empty_query" in flags:
         return "generator"
-    return "retriever"
+    return "expander"
 
 
 def get_graph():
@@ -726,17 +941,19 @@ def get_graph():
         return _compiled_graph
 
     graph = StateGraph(AgentState)
-    graph.add_node("classifier", node_query_classifier)
+    graph.add_node("guardrail", node_guardrail)
+    graph.add_node("expander", node_query_expander)
     graph.add_node("retriever", node_retriever)
     graph.add_node("reranker", node_reranker)
     graph.add_node("generator", node_generator)
 
-    graph.add_edge(START, "classifier")
+    graph.add_edge(START, "guardrail")
     graph.add_conditional_edges(
-        "classifier",
-        route_after_classifier,
-        {"retriever": "retriever", "generator": "generator"},
+        "guardrail",
+        route_after_guardrail,
+        {"expander": "expander", "generator": "generator"},
     )
+    graph.add_edge("expander", "retriever")
     graph.add_edge("retriever", "reranker")
     graph.add_edge("reranker", "generator")
     graph.add_edge("generator", END)
@@ -745,10 +962,13 @@ def get_graph():
     return _compiled_graph
 
 
-def _initial_state(query: str) -> AgentState:
+def _initial_state(query: str, history: Optional[List] = None) -> AgentState:
     return {
         "original_query": query,
         "current_query": query,
+        "query_variants": [query],
+        "detected_intent": "unknown",
+        "conversation_history": history or [],
         "raw_chunks": [],
         "ranked_chunks": [],
         "overall_confidence": "low",
@@ -759,6 +979,7 @@ def _initial_state(query: str) -> AgentState:
         "retry_count": 0,
         "node_latencies": {},
         "sources": [],
+        "quality_gate_failed": False,
     }
 
 
@@ -768,36 +989,35 @@ def _prepare_retry_state(state: AgentState) -> Optional[AgentState]:
         return None
 
     flags = state.get("guardrail_flags", [])
-    # Only retry when the LLM hallucinated — reformulating the query helps here.
-    # Do NOT retry on "low" confidence: that means the document lacks the info,
-    # and re-querying will just waste time returning the same "not found" answer.
     if "possible_hallucination" not in flags:
         return None
 
     pstatus(f"{C.YELLOW}Hallucination detected -> retry {retry_count + 1}{C.RESET}", C.YELLOW)
-    new_query = f"{state['original_query']} -- answer using ONLY exact facts stated in the document. Do not infer."
-
-    next_state = AgentState(
-        **{
-            **state,
-            "current_query": new_query,
-            "raw_chunks": [],
-            "ranked_chunks": [],
-            "sources": [],
-            "answer": "",
-            "model_used": "",
-            "fallback_used": False,
-            "retry_count": retry_count + 1,
-            "guardrail_flags": [flag for flag in flags if flag not in {"possible_hallucination", "empty_answer"}],
-            "node_latencies": {},
-        }
+    new_query = (
+        f"{state['original_query']} -- answer using ONLY exact facts stated in the document. Do not infer."
     )
-    return next_state  # type: ignore[return-value]
+
+    next_state: AgentState = {
+        **state,
+        "current_query": new_query,
+        "query_variants": [new_query],
+        "raw_chunks": [],
+        "ranked_chunks": [],
+        "sources": [],
+        "answer": "",
+        "model_used": "",
+        "fallback_used": False,
+        "quality_gate_failed": False,
+        "retry_count": retry_count + 1,
+        "guardrail_flags": [f for f in flags if f not in {"possible_hallucination", "empty_answer"}],
+        "node_latencies": {},
+    }
+    return next_state
 
 
-def run_agent(query: str):
+def run_agent(query: str, history: Optional[List] = None):
     graph = get_graph()
-    state: AgentState = _initial_state(query)
+    state: AgentState = _initial_state(query, history=history)
     t0 = time.time()
 
     while True:
@@ -809,19 +1029,22 @@ def run_agent(query: str):
         state = retry_state
 
 
-def interactive_loop():
-    print(
-        f"""
-{C.BOLD}Commands:{C.RESET}
-  {C.CYAN}ingest <path>{C.RESET}        Ingest a file (PDF, DOCX, PPTX, XLSX, image, ...)
-  {C.CYAN}ingest <p1> <p2> ...{C.RESET} Ingest multiple files at once
-  {C.CYAN}stats{C.RESET}                Show how many chunks are stored
-  {C.CYAN}reset{C.RESET}                Clear the collection and start fresh
-  {C.CYAN}quit{C.RESET}                 Exit
+# ── Interactive loop with conversation memory ─────────────────────────────────
 
-Just type your question to query the ingested documents.
-"""
-    )
+def interactive_loop():
+    print(f"""
+{C.BOLD}Commands:{C.RESET}
+  {C.CYAN}ingest <path>{C.RESET}        Ingest a file (any format)
+  {C.CYAN}ingest <p1> <p2> ...{C.RESET} Ingest multiple files
+  {C.CYAN}stats{C.RESET}                Show chunk count in Milvus
+  {C.CYAN}reset{C.RESET}                Clear the collection
+  {C.CYAN}history{C.RESET}              Show current conversation memory
+  {C.CYAN}clear{C.RESET}                Clear conversation memory
+  {C.CYAN}quit{C.RESET}                 Exit
+""")
+
+    # FIX: conversation history persisted across turns in the session
+    conversation_history: List[Dict] = []
 
     while True:
         try:
@@ -832,6 +1055,7 @@ Just type your question to query the ingested documents.
 
         if not user_input:
             continue
+
         if user_input.lower() in ("quit", "exit", "q"):
             print(f"{C.GRAY}Session ended.{C.RESET}")
             break
@@ -841,6 +1065,20 @@ Just type your question to query the ingested documents.
                 reset_collection()
             except Exception as exc:
                 perr(f"Reset failed: {exc}")
+            continue
+
+        if user_input.lower() == "clear":
+            conversation_history = []
+            pok("Conversation memory cleared.")
+            continue
+
+        if user_input.lower() == "history":
+            if not conversation_history:
+                pstatus("No conversation history yet.", C.GRAY)
+            for i, turn in enumerate(conversation_history, 1):
+                print(f"  {C.BLUE}Turn {i}{C.RESET}")
+                print(f"    Q: {turn.get('query', '')[:80]}")
+                print(f"    A: {turn.get('answer', '')[:80]}...")
             continue
 
         if user_input.lower().startswith("ingest "):
@@ -868,9 +1106,23 @@ Just type your question to query the ingested documents.
             continue
 
         pstatus(f"Query: {C.WHITE}{user_input}{C.RESET}")
+        if conversation_history:
+            pstatus(f"Memory: {len(conversation_history)} turn(s) in context", C.GRAY)
         print()
+
         try:
-            result = run_agent(user_input)
+            result = run_agent(user_input, history=conversation_history)
+
+            # Update conversation memory
+            if result.get("answer") and result.get("model_used") != "none":
+                conversation_history.append({
+                    "query": user_input,
+                    "answer": result["answer"],
+                })
+                # Keep last 10 turns to avoid unbounded growth
+                if len(conversation_history) > 10:
+                    conversation_history = conversation_history[-10:]
+
             print_answer(
                 result.get("answer", ""),
                 result.get("overall_confidence", "low"),
@@ -888,15 +1140,15 @@ Just type your question to query the ingested documents.
 
 def main():
     parser = argparse.ArgumentParser(
-        description="NV-Ingest 25.9.0 + LangGraph RAG Agent",
+        description="Enterprise Multimodal RAG Agent v2 — NV-Ingest + LangGraph",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python rag_agent.py                   # Auto-ingest INGEST_FILES then query loop
-  python rag_agent.py --reset           # Drop collection, re-ingest, then query
+  python rag_agent_v2.py                   # Auto-ingest INGEST_FILES then query loop
+  python rag_agent_v2.py --reset           # Drop collection, re-ingest, then query
         """,
     )
-    parser.add_argument("--reset", action="store_true", help="Drop and recreate the Milvus collection before ingest")
+    parser.add_argument("--reset", action="store_true", help="Drop and recreate the Milvus collection")
     args = parser.parse_args()
 
     banner()
@@ -911,9 +1163,11 @@ Examples:
     pok(f"Collection: {COLLECTION}")
     pok(f"Embed URL: {EMBED_URL}")
     pok(f"Reranker: {RERANK_MODEL}")
-    pok(f"LLM: {LLM_URL}")
+    pok(f"Confidence thresholds: high>={CONFIDENCE_HIGH_THRESHOLD}, medium>={CONFIDENCE_MEDIUM_THRESHOLD}")
+    pok(f"Quality gate: skip generation if top score < {MIN_GENERATION_SCORE}")
+    pok(f"Retrieval top-k: {RETRIEVAL_TOP_K}, Rerank top-k: {RERANK_TOP_K}, Context: {MAX_CONTEXT}")
+    pok(f"LLM: {PRIMARY_LLM} → fallback: {FALLBACK_LLM}")
 
-    # Auto-ingest files defined in INGEST_FILES
     files_to_ingest = [f for f in INGEST_FILES if f.strip()]
     if files_to_ingest:
         valid = [f for f in files_to_ingest if os.path.isfile(f)]
@@ -921,7 +1175,7 @@ Examples:
         for f in missing:
             perr(f"File not found: {f}")
         if valid:
-            pstatus(f"Auto-ingesting {len(valid)} file(s) from INGEST_FILES...")
+            pstatus(f"Auto-ingesting {len(valid)} file(s)...")
             try:
                 run_ingest(valid, reset=args.reset)
             except Exception as exc:
