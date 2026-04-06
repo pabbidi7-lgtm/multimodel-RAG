@@ -128,7 +128,7 @@ def pwarn(msg: str):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 INGEST_FILES: List[str] = [
-    # "Docs/Oxford.pdf"  # populate at startup
+    "/home/clouduser01/jaswanth/Docs/Ascent_of_Open.pdf",
 ]
 
 NVIDIA_API_KEY       = os.environ.get("NVIDIA_API_KEY", "")
@@ -137,7 +137,7 @@ COLLECTION           = os.environ.get("COLLECTION", "rag_documents_v3")
 DIM                  = int(os.environ.get("EMBED_DIM", "1024"))
 
 CHAT_API_BASE        = os.environ.get("NVIDIA_CHAT_API_BASE", "https://integrate.api.nvidia.com")
-RETRIEVAL_API_BASE   = os.environ.get("NVIDIA_RETRIEVAL_API_BASE", "https://ai.api.nvidia.com")
+RETRIEVAL_API_BASE   = os.environ.get("NVIDIA_RETRIEVAL_API_BASE", "https://integrate.api.nvidia.com")
 
 EMBED_URL            = os.environ.get("EMBED_URL",  f"{CHAT_API_BASE}/v1/embeddings")
 EMBED_MODEL          = os.environ.get("EMBED_MODEL", "nvidia/nv-embedqa-e5-v5")
@@ -477,8 +477,8 @@ def run_ingest(file_paths: List[str], reset: bool = False) -> Dict[str, Any]:
         .split(
             tokenizer="bert-base-uncased",
             chunk_size=512,
-            chunk_overlap=100,          # larger overlap helps visual docs
-            params={"split_source_types": ["text", "table", "chart"]},
+            chunk_overlap=100,
+            params={"split_source_types": ["text", "structured", "chart"]},
         )
         .caption(
             endpoint_url=CAPTION_URL,
