@@ -1,52 +1,149 @@
-services:
-  etcd:
-    container_name: milvus-etcd
-    image: quay.io/coreos/etcd:v3.5.5
-    environment:
-      - ETCD_AUTO_COMPACTION_MODE=revision
-      - ETCD_AUTO_COMPACTION_RETENTION=1000
-      - ETCD_QUOTA_BACKEND_BYTES=4294967296
-    command: etcd -advertise-client-urls=http://etcd:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
-    volumes:
-      - ./volumes/etcd:/etcd
+import os
+import logging
+import io
+import base64
 
-  minio:
-    container_name: milvus-minio
-    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
-    environment:
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin
-    command: minio server /minio_data
-    volumes:
-      - ./volumes/minio:/minio_data
-    ports:
-      - "9000:9000"
+import requests
+from PIL import Image
+from pymilvus import MilvusClient
+from dotenv import load_dotenv
 
-  milvus:
-    container_name: milvus-standalone
-    image: milvusdb/milvus:v2.3.9
-    command: ["milvus", "run", "standalone"]
-    environment:
-      ETCD_ENDPOINTS: etcd:2379
-      MINIO_ADDRESS: minio:9000
-    volumes:
-      - ./volumes/milvus:/var/lib/milvus
-    ports:
-      - "19530:19530"
-      - "9091:9091"
-    depends_on:
-      - etcd
-      - minio
+# ---------- ENV ----------
+load_dotenv()
+NVIDIA_API_KEY = os.environ["NVIDIA_API_KEY"]
 
-  pipeline:
-    container_name: rag-pipeline
-    build:
-      context: .
-      dockerfile: Dockerfile
-    environment:
-      - NVIDIA_API_KEY=${NVIDIA_API_KEY}
-      - MILVUS_URI=http://milvus:19530
-    volumes:
-      - ./docks:/app/docks
-    depends_on:
-      - milvus
+# ---------- LOGGING ----------
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("vision-rag")
+
+# ---------- PATHS ----------
+BASE_DIR = "/home/clouduser01/jaswanth"
+DOCS_DIR = os.path.join(BASE_DIR, "Docs")
+MILVUS_DB = os.path.join(BASE_DIR, "sample_milvus_rag.db")
+
+COLLECTION = "rag_images"
+DIM = 8  # small dummy dimension, Milvus Lite requirement
+
+milvus = MilvusClient(uri=MILVUS_DB)
+
+# ---------- IMAGE UTILS ----------
+def image_to_base64(path: str) -> str:
+    with Image.open(path) as img:
+        buf = io.BytesIO()
+        img.convert("RGB").save(buf, format="PNG")
+        return base64.b64encode(buf.getvalue()).decode()
+
+# ---------- MILVUS INIT ----------
+def ensure_collection():
+    if not milvus.has_collection(COLLECTION):
+        milvus.create_collection(
+            collection_name=COLLECTION,
+            dimension=DIM,
+            metric_type="L2",
+            auto_id=True,
+        )
+        logger.info("✅ Milvus Lite collection created")
+    else:
+        logger.info("✅ Milvus collection already exists")
+
+# ---------- INGEST IMAGE ----------
+def ingest_image(image_path: str):
+    img_b64 = image_to_base64(image_path)
+
+    # Milvus Lite REQUIRES a vector field named `vector`
+    dummy_vector = [0.0] * DIM
+
+    milvus.insert(
+        collection_name=COLLECTION,
+        data=[{
+            "vector": dummy_vector,       # ✅ correct field name
+            "image_base64": img_b64,
+        }]
+    )
+
+    logger.info("✅ Image inserted into Milvus")
+
+# ---------- RETRIEVE IMAGE ----------
+def retrieve_image():
+    results = milvus.query(
+        collection_name=COLLECTION,
+        limit=1,
+        output_fields=["image_base64"],
+    )
+
+    if not results:
+        raise RuntimeError("No image found in Milvus")
+
+    return results[0]["image_base64"]
+
+# ---------- VISION QA ----------
+def vision_rag(query: str) -> str:
+    image_b64 = retrieve_image()
+
+    response = requests.post(
+        "https://integrate.api.nvidia.com/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {NVIDIA_API_KEY}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": "meta/llama-3.2-90b-vision-instruct",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": "This is an official identity card."},
+                        {"type": "image_base64", "image_base64": image_b64},
+                        {
+                            "type": "text",
+                            "text": f"Question: {query}\nAnswer clearly and precisely."
+                        },
+                    ],
+                }
+            ],
+            "max_tokens": 300,
+            "temperature": 0.2,
+        },
+        timeout=120,
+    )
+
+    response.raise_for_status()
+    return response.json()["choices"][0]["message"]["content"]
+
+# ---------- MAIN ----------
+if __name__ == "__main__":
+    ensure_collection()
+
+    image_path = os.path.join(DOCS_DIR, "Singapore_NID_F 1.jpeg")
+    ingest_image(image_path)
+
+    query = "What is the first name mentioned in the ID?"
+    print("\nQ:", query)
+    print("A:", vision_rag(query))
+
+
+
+    taskset -c 0-7 python Sample.py
+INFO:vision-rag:✅ Milvus collection already exists
+INFO:vision-rag:✅ Image inserted into Milvus
+
+Q: What is the first name mentioned in the ID?
+Traceback (most recent call last):
+  File "/home/clouduser01/jaswanth/Sample.py", line 122, in <module>
+    print("A:", vision_rag(query))
+                ^^^^^^^^^^^^^^^^^
+  File "/home/clouduser01/jaswanth/Sample.py", line 110, in vision_rag
+    response.raise_for_status()
+  File "/home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages/requests/models.py", line 1026, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 400 Client Error: Bad Request for url: https://integrate.api.nvidia.com/v1/chat/completions
+E20260408 05:15:50.802284 2120642 server.cpp:47] [SERVER][BlockLock][milvus] Process exit
+(myenv) clouduser01@AZRCIDEVNIVIDIA:~/jaswanth$ 
+
+i was creating the text + image + tables + charts + inforgraphics - so indiside the nv ingest we ahve the extract_image = true but there is no image bytes are storing and 
+is no charts and inforgraphics and tables layout is preserving just taking the pdf and extracting the image embeddings as the captions and the charts too so when the user asks 
+it was not providing the exact table/charts/images actually doing
+so to preserve them we need to run the VLM model so that it can understand and preservers the layout - so when query comes like waht does the red legend indicating in this chart 
+it will work right
+so evreything should be in milvus lite .db 
+make it happen 
