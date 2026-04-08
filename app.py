@@ -1,69 +1,4 @@
- taskset -c 0-7 python rag_agent.py --demo --demo-pdf ./Docs/minion-tech.pdf
-
-+===========================================================+
-|  NV-Ingest 25.9.0 + LangGraph RAG Agent                  |
-|                                                           |
-|  Nodes: classifier -> retriever -> reranker -> generator  |
-|  Retry: LOW confidence x1  |  hallucination x1           |
-+===========================================================+
-
-  OK NVIDIA_API_KEY: nvapi-BEJBdSJ-K...
-  OK Milvus DB: ./milvus_rag.db
-  OK Collection: rag_documents
-  OK Embed URL: https://integrate.api.nvidia.com/v1/embeddings
-  OK Reranker URL: cross-encoder/ms-marco-MiniLM-L-12-v2
-  OK LLM URL: https://integrate.api.nvidia.com/v1/chat/completions
-  > Document: minion-tech.pdf
-
-  > Importing NV-Ingest (loads Ray internally)...
-2026-04-01 17:27:33.443191595 [W:onnxruntime:Default, device_discovery.cc:132 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename ""5620e0c7-8062-4dce-aeb7-520c7ef76171"" dit not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+
-  OK NV-Ingest imported (7.6s)
-  > Launching pipeline subprocess...
-  > First run takes 2-5 min. Please wait.
-  > Waiting for broker localhost:7671...
-  OK Broker ready
-  OK Pipeline ready (15.6s)
-  > Ingesting 1 file(s)...
-  >   -> minion-tech.pdf (10791 KB)
-  > Running: load -> extract -> split -> caption -> embed -> vdb_upload
-Processing: 100%|██████████████████████████████████████████████████████████████████████████████████████████| 1/1 [01:03<00:00, 63.71s/doc]
-  OK 1 chunks ingested in 65,634ms (0 failures)
-
-  > [1/5] Using the balance sheet and P&L statement, calculate the debt-to-equity ratio and return on equity (ROE). Based on these metrics, is Gru's Enterprises financially healthy?
-
-  > Node 1 classifier: type=calculation (4132ms)
-  > Connecting to Milvus: ./milvus_rag.db
-  OK Collection 'rag_documents' exists
-  > Node 2 retriever: 20 chunks (351ms)
-config.json: 100%|███████████████████████████████████████████████████████████████████████████████████████| 791/791 [00:00<00:00, 3.75MB/s]
-model.safetensors: 100%|███████████████████████████████████████████████████████████████████████████████| 133M/133M [00:05<00:00, 23.9MB/s]
-Loading weights: 100%|████████████████████████████████████████████████████████████████████████████████| 201/201 [00:00<00:00, 3850.83it/s]
-BertForSequenceClassification LOAD REPORT from: cross-encoder/ms-marco-MiniLM-L-12-v2
-Key                          | Status     |  | 
------------------------------+------------+--+-
-bert.embeddings.position_ids | UNEXPECTED |  | 
-
-Notes:
-- UNEXPECTED    :can be ignored when loading from different task/architecture; not ok if you expect identical arch.
-tokenizer_config.json: 1.33kB [00:00, 3.69MB/s]
-vocab.txt: 232kB [00:00, 3.52MB/s]
-tokenizer.json: 711kB [00:00, 21.0MB/s]
-special_tokens_map.json: 100%|████████████████████████████████████████████████████████████████████████████| 132/132 [00:00<00:00, 473kB/s]
-README.md: 3.68kB [00:00, 12.0MB/s]
-Batches: 100%|██████████████████████████████████████████████████████████████████████████████████████████████| 1/1 [00:02<00:00,  2.46s/it]
-  > Node 3 reranker: 8 chunks, low (26203ms)
-  > Generating with llama-3.3-70b-instruct...
-  > Node 4 generator: llama-3.3-70b-instruct (25120ms)
-  > LOW confidence -> reformulating (retry 1)
-  > Node 1 classifier: type=calculation (14510ms)
-  > Node 2 retriever: 20 chunks (412ms)
-Batches: 100%|██████████████████████████████████████████████████████████████████████████████████████████████| 1/1 [00:02<00:00,  2.02s/it]
-  > Node 3 reranker: 8 chunks, low (2024ms)
-  > Generating with llama-3.3-70b-instruct...
-  > Node 4 generator: llama-3.3-70b-instruct (5897ms)
-
-+-- ANSWER --------------------------------------------------+
-| LOW CONFIDENCE  |  llama-3.3-70b-instruct  |  78,658ms
+ | LOW CONFIDENCE  |  llama-3.3-70b-instruct  |  78,658ms
 | retried 1x
 +------------------------------------------------------------+
 | To calculate the debt-to-equity ratio and return on
@@ -472,7 +407,237 @@ Batches: 100%|██████████████████████
 
   Sources (6 chunks):
     Chunk 1  medium  score=0.327
-    minion-tech.md 2024-01-06
+    minion-tech.md 2024-01-06import os
+import io
+import base64
+import logging
+import requests
+from typing import List, Dict
+
+from PIL import Image
+from pymilvus import MilvusClient
+from dotenv import load_dotenv
+
+# ================== ENV ==================
+load_dotenv()
+NVIDIA_API_KEY = os.environ.get("NVIDIA_API_KEY")
+
+# ================== CONFIG ==================
+BASE_DIR = "/home/clouduser01/jaswanth"
+DOCS_DIR = os.path.join(BASE_DIR, "Docs")
+MILVUS_DB = os.path.join(BASE_DIR, "hybrid_rag.db")
+
+COLLECTION = "hybrid_rag"
+DIM = 1024  # embedding dimension (change based on model)
+
+# ================== LOGGING ==================
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("HYBRID-RAG")
+
+# ================== MILVUS ==================
+milvus = MilvusClient(uri=MILVUS_DB)
+
+def ensure_collection():
+    if not milvus.has_collection(COLLECTION):
+        milvus.create_collection(
+            collection_name=COLLECTION,
+            dimension=DIM,
+            metric_type="COSINE",
+            auto_id=True,
+        )
+        logger.info("✅ Collection created")
+    else:
+        logger.info("✅ Collection exists")
+
+# ================== UTILS ==================
+def image_to_base64(path: str) -> str:
+    with Image.open(path) as img:
+        buf = io.BytesIO()
+        img.convert("RGB").save(buf, format="PNG")
+        return base64.b64encode(buf.getvalue()).decode()
+
+# ================== EMBEDDING ==================
+def get_embedding(text: str) -> List[float]:
+    url = "https://integrate.api.nvidia.com/v1/embeddings"
+
+    response = requests.post(
+        url,
+        headers={
+            "Authorization": f"Bearer {NVIDIA_API_KEY}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": "nvidia/nv-embed-v1",
+            "input": text
+        },
+    )
+
+    response.raise_for_status()
+    return response.json()["data"][0]["embedding"]
+
+# ================== INGEST ==================
+def ingest_text(text: str, source: str):
+    emb = get_embedding(text)
+
+    milvus.insert(
+        collection_name=COLLECTION,
+        data=[{
+            "vector": emb,
+            "type": "text",
+            "content": text,
+            "source": source
+        }]
+    )
+    logger.info("✅ Text inserted")
+
+
+def ingest_image(image_path: str, description: str):
+    emb = get_embedding(description)
+    img_b64 = image_to_base64(image_path)
+
+    milvus.insert(
+        collection_name=COLLECTION,
+        data=[{
+            "vector": emb,
+            "type": "image",
+            "content": description,
+            "image_base64": img_b64,
+            "source": image_path
+        }]
+    )
+    logger.info("✅ Image inserted")
+
+
+# ================== RETRIEVAL ==================
+def retrieve(query: str, top_k=3) -> List[Dict]:
+    emb = get_embedding(query)
+
+    results = milvus.search(
+        collection_name=COLLECTION,
+        data=[emb],
+        limit=top_k,
+        output_fields=["type", "content", "image_base64", "source"],
+    )
+
+    return results[0]
+
+
+# ================== TEXT QA ==================
+def text_rag(contexts: List[str], query: str) -> str:
+    context_text = "\n".join(contexts)
+
+    payload = {
+        "model": "meta/llama-3.1-70b-instruct",
+        "messages": [
+            {
+                "role": "user",
+                "content": f"Context:\n{context_text}\n\nQuestion: {query}\nAnswer clearly."
+            }
+        ],
+        "temperature": 0.2,
+        "max_tokens": 300
+    }
+
+    response = requests.post(
+        "https://integrate.api.nvidia.com/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {NVIDIA_API_KEY}",
+            "Content-Type": "application/json",
+        },
+        json=payload,
+    )
+
+    response.raise_for_status()
+    return response.json()["choices"][0]["message"]["content"]
+
+
+# ================== VISION QA ==================
+def vision_rag(image_b64: str, query: str) -> str:
+    payload = {
+        "model": "meta/llama-3.2-90b-vision-instruct",
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "Analyze this image carefully."},
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/png;base64,{image_b64}"
+                        }
+                    },
+                    {"type": "text", "text": f"Question: {query}"}
+                ]
+            }
+        ],
+        "temperature": 0.2,
+        "max_tokens": 300
+    }
+
+    response = requests.post(
+        "https://integrate.api.nvidia.com/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {NVIDIA_API_KEY}",
+            "Content-Type": "application/json",
+        },
+        json=payload,
+    )
+
+    print("DEBUG:", response.text)  # 🔥 debug if error
+    response.raise_for_status()
+
+    return response.json()["choices"][0]["message"]["content"]
+
+
+# ================== ROUTER ==================
+def answer_query(query: str):
+    results = retrieve(query)
+
+    text_contexts = []
+    image_hits = []
+
+    for r in results:
+        if r["entity"]["type"] == "image":
+            image_hits.append(r["entity"])
+        else:
+            text_contexts.append(r["entity"]["content"])
+
+    # 🔥 If image exists → use VLM
+    if image_hits:
+        logger.info("🧠 Using Vision Model")
+        return vision_rag(image_hits[0]["image_base64"], query)
+
+    # 🔥 Else → text model
+    logger.info("🧠 Using Text Model")
+    return text_rag(text_contexts, query)
+
+
+# ================== MAIN ==================
+if __name__ == "__main__":
+    ensure_collection()
+
+    # ====== SAMPLE INGEST ======
+    ingest_text(
+        "The red legend in the chart indicates revenue growth.",
+        "doc1"
+    )
+
+    ingest_image(
+        os.path.join(DOCS_DIR, "Singapore_NID_F 1.jpeg"),
+        "This is an identity card with name and details"
+    )
+
+    # ====== QUERY ======
+    while True:
+        q = input("\nEnter your query: ")
+        if q.lower() == "exit":
+            break
+
+        try:
+            ans = answer_query(q)
+            print("\nAnswer:", ans)
+        except Exception as e:
+            print("❌ Error:", e)
 13 / 22
 9. Investment Appeal
 Investment Needs
