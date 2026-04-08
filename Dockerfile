@@ -1,93 +1,89 @@
-import os
-# Must be set BEFORE any grpc/ray imports — fixes fork() crash in pipeline subprocess
-os.environ["GRPC_ENABLE_FORK_SUPPORT"] = "0"
-os.environ["GRPC_POLL_STRATEGY"] = "poll"
+import logging, os, time
 
-import multiprocessing
-multiprocessing.set_start_method("spawn", force=True)
+import pymilvus
+pymilvus.connections.disconnect("default")
 
-import logging
-import socket
-import time
-from typing import List, Optional
-import requests
-from pymilvus import MilvusClient
-
-# ---------- NV-Ingest ----------
 from nv_ingest.framework.orchestration.ray.util.pipeline.pipeline_runners import (
     run_pipeline,
-    PipelineCreationSchema,
+    PipelineCreationSchema
 )
 from nv_ingest_client.client import Ingestor, NvIngestClient
 from nv_ingest_api.util.message_brokers.simple_message_broker import SimpleClient
+from nv_ingest_client.util.process_json_files import ingest_json_results_to_blob
 
-# ---------- Logging ----------
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
-logger = logging.getLogger(__name__)
-
-# ---------- Env ----------
-if "NVIDIA_API_KEY" not in os.environ:
-    raise RuntimeError("Set NVIDIA_API_KEY in env")
+# ------------ CONFIG ------------
+assert "NVIDIA_API_KEY" in os.environ, "Set env: export NVIDIA_API_KEY=..."
 NVIDIA_API_KEY = os.environ["NVIDIA_API_KEY"]
 
-# ---------- Milvus ----------
-MILVUS_DB = "./milvus_rag.db"
-COLLECTION = "rag_documents"
-DIM = 1024  # nv-embedqa-e5-v5 = 1024
-milvus = MilvusClient(uri=MILVUS_DB)
+# ------------ START PIPELINE ------------
+config = PipelineCreationSchema()
 
-# ---------- Wait for broker ----------
-def wait_for_broker(host="localhost", port=7671, timeout=180):
-    logger.info(f"Waiting for broker {host}:{port}...")
-    start = time.time()
-    while time.time() - start < timeout:
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.settimeout(1)
-        if s.connect_ex((host, port)) == 0:
-            s.close()
-            logger.info("Broker ready!")
-            return
-        s.close()
-        time.sleep(1)
-    raise RuntimeError("Broker timeout — pipeline subprocess likely crashed. Check stderr above.")
+run_pipeline(
+    config,
+    block=False,
+    disable_dynamic_scaling=True,
+    run_in_subprocess=True
+)
 
-# ---------- Embedding (for RAG retrieval queries) ----------
-def embed_nvidia(texts: List[str]) -> List[List[float]]:
-    r = requests.post(
-        "https://integrate.api.nvidia.com/v1/embeddings",
-        json={
-            "model": "nvidia/nv-embedqa-e5-v5",
-            "input": texts,
-            "input_type": "query",
-            "encoding_format": "float",
-            "truncate": "END",
-        },
-        headers={"Authorization": f"Bearer {NVIDIA_API_KEY}"},
-        timeout=60,
+print("Waiting for pipeline to initialize...")
+time.sleep(15)
+print("Pipeline ready. Connecting client...")
+
+client = NvIngestClient(
+    message_client_allocator=SimpleClient,
+    message_client_port=7671,
+    message_client_hostname="localhost"
+)
+
+milvus_uri = "milvus.db"
+collection_name = "medical_docs"
+sparse = False
+
+# =========================================================================
+#  STEP 1: Basic text extraction (sanity check)
+# =========================================================================
+print("\n=== STEP 1: Basic text extraction ===")
+
+ingestor = (
+    Ingestor(client=client)
+    .files("Docs/PK0016.pdf")
+    .extract(
+        extract_text=True,
+        extract_tables=False,
+        extract_charts=False,
+        extract_images=False,
+        extract_infographics=False,
+        text_depth="page",
     )
-    r.raise_for_status()
-    return [e["embedding"] for e in r.json()["data"]]
+)
 
-# ---------- INGESTION ----------
-def ingest_document(file_paths: List[str], output_dir: Optional[str] = None) -> List[dict]:
-    logger.info(f"Ingesting: {file_paths}")
+print("Starting ingestion...")
+t0 = time.time()
+results, failures = ingestor.ingest(show_progress=True, return_failures=True)
+t1 = time.time()
+print(f"Total time: {t1 - t0:.2f} seconds")
+print(f"\nResults:  {len(results)}")
+print(f"Failures: {len(failures)}")
 
-    cfg = PipelineCreationSchema()
-    run_pipeline(cfg, block=False, disable_dynamic_scaling=True, run_in_subprocess=True)
-    logger.info("Pipeline subprocess launched...")
+if failures:
+    print("\n=== STEP 1 FAILURES ===")
+    for i, f in enumerate(failures):
+        print(f"--- [{i}] ---\n{f}")
+    print("\nFix Step 1 before proceeding.")
 
-    wait_for_broker()
+elif results:
+    print("\n=== STEP 1 SUCCEEDED ===")
+    blob = ingest_json_results_to_blob(results[0])
+    print(blob[:500] + "..." if len(blob) > 500 else blob)
 
-    client = NvIngestClient(
-        message_client_allocator=SimpleClient,
-        message_client_port=7671,
-        message_client_hostname="localhost",
-    )
+    # =========================================================================
+    #  STEP 2: Full extraction + split + caption + embed + vdb upload
+    # =========================================================================
+    print("\n=== STEP 2: Full pipeline (extract + split + caption + embed + vdb) ===")
 
-    ingestor = (
+    ingestor_full = (
         Ingestor(client=client)
-        .files(file_paths)
-        .load()
+        .files("Docs/PK0016.pdf")
         .extract(
             extract_text=True,
             extract_tables=True,
@@ -103,112 +99,92 @@ def ingest_document(file_paths: List[str], output_dir: Optional[str] = None) -> 
             chunk_overlap=50,
             params={"split_source_types": ["PDF", "text", "html", "mp3", "docx", "pptx"]},
         )
-        .embed(
-            endpoint_url="https://integrate.api.nvidia.com/v1/embeddings",
-            model_name="nvidia/nv-embedqa-e5-v5",
+        .caption(
+            endpoint_url="https://integrate.api.nvidia.com/v1/chat/completions",
+            model_name="nvidia/llama-3.1-nemotron-nano-vl-8b-v1",
             api_key=NVIDIA_API_KEY,
         )
+        .embed()
+        .vdb_upload(
+            collection_name=collection_name,
+            milvus_uri=milvus_uri,
+            sparse=sparse,
+            dense_dim=2048
+        )
     )
 
-    if output_dir:
-        os.makedirs(output_dir, exist_ok=True)
-        ingestor = ingestor.save_to_disk(output_directory=output_dir, cleanup=True)
+    print("Starting full ingestion...")
+    t0 = time.time()
+    results_full, failures_full = ingestor_full.ingest(show_progress=True, return_failures=True)
+    t1 = time.time()
+    print(f"Total time: {t1 - t0:.2f} seconds")
+    print(f"\nResults:  {len(results_full)}")
+    print(f"Failures: {len(failures_full)}")
 
-    ingestor = ingestor.vdb_upload(
-        collection_name=COLLECTION,
-        milvus_uri=MILVUS_DB,
-        dense_dim=DIM,
-    )
-
-    results_lazy, failures = ingestor.ingest(show_progress=True, return_failures=True)
-    results = list(results_lazy)
-
-    if failures:
-        logger.warning(f"{len(failures)} failures during ingestion")
-
-    flat = []
-    for doc in results:
-        if hasattr(doc, "chunks"):
-            for chunk in doc.chunks:
-                flat.append({
-                    "text": chunk.get("content", ""),
-                    "embedding": chunk.get("embedding", [])
-                })
-
-    logger.info(f"Extracted {len(flat)} chunks → Milvus")
-    return flat
-
-# ---------- RETRIEVAL ----------
-def retrieve(query: str, top_k: int = 5) -> List[str]:
-    q_emb = embed_nvidia([query])[0]
-    hits = milvus.search(
-        collection_name=COLLECTION,
-        data=[q_emb],
-        limit=top_k,
-        output_fields=["text"],
-    )[0]
-    return [h["entity"].get("text") for h in hits]
-
-# ---------- RAG ----------
-def rag_chatbot(query: str) -> str:
-    ctx = retrieve(query)
-    if not ctx:
-        return "No relevant info found."
-    prompt = f"Context:\n{' '.join(ctx)}\n\nQuestion: {query}\nAnswer:"
-    try:
-        r = requests.post(
-            "https://integrate.api.nvidia.com/v1/chat/completions",
-            json={
-                "model": "meta/llama-3.3-70b-instruct",
-                "messages": [{"role": "user", "content": prompt}],
-                "max_tokens": 1024,
-                "temperature": 0.7,
-            },
-            headers={"Authorization": f"Bearer {NVIDIA_API_KEY}"},
-            timeout=120,
-        )
-        r.raise_for_status()
-        return r.json()["choices"][0]["message"]["content"]
-    except Exception as e:
-        return f"LLM error: {e}"
-
-# ---------- MILVUS INIT ----------
-def ensure_collection():
-    if not milvus.has_collection(COLLECTION):
-        milvus.create_collection(
-            collection_name=COLLECTION,
-            dimension=DIM,
-            metric_type="COSINE",
-            auto_id=True,
-        )
-        logger.info("Created Milvus collection")
+    if failures_full:
+        print("\n=== STEP 2 FAILURES ===")
+        for i, f in enumerate(failures_full):
+            print(f"--- [{i}] ---\n{f}")
     else:
-        logger.info("Milvus collection exists")
+        print("\n=== STEP 2 SUCCEEDED ===")
+        print(f"Embeddings stored in Milvus Lite: {milvus_uri}")
+        print(f"Collection: {collection_name}")
 
-# ---------- MAIN ----------
-if __name__ == "__main__":
-    ensure_collection()
+        # =========================================================================
+        #  STEP 3: Retrieval + RAG queries
+        # =========================================================================
+        print("\n=== STEP 3: Querying ingested documents ===")
 
-    pdf = "./Docs/multimodal_test.pdf"
-    chunks = ingest_document([pdf], output_dir="./temp_ingest")
+        from openai import OpenAI
+        from nv_ingest_client.util.milvus import nvingest_retrieval
 
-    print(f"\nIngested {len(chunks)} chunks")
-    for c in chunks[:2]:
-        print(" •", c["text"][:120].replace("\n", " ") + "...")
+        queries = [
+            "What are all the test results that are outside the normal biological reference interval?",
+            "Based on the kidney function test and eGFR classification table, what is the patient's GFR category?",
+            "What is the patient's HbA1c value and is this prediabetic or diabetic per ADA guidelines?",
+            "Summarize the ultrasound whole abdomen findings and what tests were advised?",
+            "What are the lipid profile results and classify each as optimal, borderline high, or high?",
+        ]
 
-    print("\n--- RAG Chatbot Ready ---")
-    print("Type your question (or 'exit' to quit)\n")
+        llm_client = OpenAI(
+            base_url="https://integrate.api.nvidia.com/v1",
+            api_key=NVIDIA_API_KEY
+        )
 
-    while True:
-        try:
-            q = input("Ask a question: ").strip()
-            if q.lower() in ["exit", "quit"]:
-                print("Exiting...")
-                break
-            if not q:
-                continue
-            answer = rag_chatbot(q)
-            print(f"\nA: {answer}\n")
-        except KeyboardInterrupt:
-            print("\nExiting...")
-            break
+        print("=" * 60)
+        for q in queries:
+            retrieved_docs = nvingest_retrieval(
+                [q],
+                collection_name,
+                milvus_uri=milvus_uri,
+                hybrid=sparse,
+                top_k=10,
+            )
+
+            if retrieved_docs and retrieved_docs[0]:
+                context = "\n\n".join([doc["entity"]["text"] for doc in retrieved_docs[0]])
+            else:
+                context = "No relevant content found."
+
+            prompt = f"""Use the following context to answer the question.
+If the answer is not in the context, say so.
+
+Context:
+{context}
+
+Question: {q}
+Answer:"""
+
+            completion = llm_client.chat.completions.create(
+                model="meta/llama-3.3-70b-instruct",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=1024,
+                temperature=0.7,
+            )
+
+            print(f"\nQ: {q}")
+            print(f"A: {completion.choices[0].message.content}")
+            print("-" * 60)
+
+else:
+    print("\nNo results and no failures — unexpected state.")
