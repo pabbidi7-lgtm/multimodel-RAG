@@ -163,6 +163,10 @@ HALLUCINATION_PHRASES = [
 ]
 
 
+INGEST_FILES: List[str] = [
+    "Docs/merger_agreement 1.pdf",
+]
+
 # ── Type definitions ──────────────────────────────────────────────────────────
 
 class ChunkRecord(TypedDict, total=False):
@@ -316,7 +320,25 @@ def _image_mime(path: str) -> str:
 # ── Embeddings ────────────────────────────────────────────────────────────────
 
 def embed_texts(texts: List[str], input_type: str = "query") -> List[List[float]]:
-    cleaned = [t.strip() if t and t.strip() else "<empty>" for t in texts]
+    """
+    Embed texts using NVIDIA API.
+    CRITICAL: API has 512-token limit (~400 words).
+    Truncates any oversized texts automatically.
+    """
+    # ── Truncate to ~400 words (≈512 tokens) to stay under API limit ────────
+    max_words = 400
+    cleaned = []
+    
+    for t in texts:
+        if not t or not t.strip():
+            cleaned.append("<empty>")
+        else:
+            words = t.strip().split()
+            if len(words) > max_words:
+                logger.warning(f"Text truncated from {len(words)} to {max_words} words for embedding")
+                t = " ".join(words[:max_words])
+            cleaned.append(t)
+    
     data = _api_call(EMBED_URL, {
         "model":           EMBED_MODEL,
         "input":           cleaned,
@@ -734,21 +756,87 @@ def _build_search_text(r: ChunkRecord) -> str:
     """
     Build a rich searchable string from all modality fields.
     This is what gets embedded into the text vector index.
+    
+    CRITICAL: Keep total length under ~400 words (≈512 tokens).
+    The NVIDIA embedding API has a 512-token limit.
+    For images: prioritize OCR > caption > spatial/color info.
     """
-    parts = [
-        f"modality: {r.get('modality', 'text')}",
-        f"title: {r.get('title', '')}",
-        f"text: {r.get('text', '')}",
-        f"ocr: {r.get('ocr_text', '')}",
-        f"caption: {r.get('caption_text', '')}",
-        f"table: {r.get('table_text', '')}",
-        f"chart: {r.get('chart_text', '')}",
-        f"layout: {r.get('layout_text', '')}",
-        f"colors: {r.get('color_info', '')}",
-        f"spatial: {r.get('spatial_info', '')}",
-    ]
-    filtered = [p for p in parts if p.split(": ", 1)[1].strip()]
-    return "\n".join(filtered).strip()
+    modality = r.get("modality", "text")
+    
+    # ── For images: prioritize OCR and caption, skip verbose fields ──────────
+    if modality == "image":
+        parts = [
+            f"type: image",
+            f"file: {r.get('title', '')[:60]}",  # Keep filename short
+        ]
+        
+        # OCR is most important for images - include if present
+        ocr = r.get("ocr_text", "").strip()
+        if ocr:
+            # Truncate to 200 words (~260 tokens) to leave room for other fields
+            ocr_words = ocr.split()[:200]
+            parts.append(f"text: {' '.join(ocr_words)}")
+        
+        # Caption provides context
+        caption = r.get("caption_text", "").strip()
+        if caption:
+            caption_words = caption.split()[:150]
+            parts.append(f"caption: {' '.join(caption_words)}")
+        
+        # Color and spatial for visual queries (more concise)
+        color = r.get("color_info", "").strip()
+        if color and len(color) < 200:
+            parts.append(f"colors: {color[:150]}")
+        
+        spatial = r.get("spatial_info", "").strip()
+        if spatial and len(spatial) < 200:
+            parts.append(f"layout: {spatial[:150]}")
+        
+        result = "\n".join(parts).strip()
+        
+    # ── For documents: include all fields but truncate each ──────────────────
+    else:
+        parts = [
+            f"modality: {modality}",
+            f"title: {r.get('title', '')[:60]}",  # Short title
+        ]
+        
+        # Main text content (limit to 300 words ≈ 390 tokens)
+        text = r.get("text", "").strip()
+        if text:
+            text_words = text.split()[:300]
+            parts.append(f"content: {' '.join(text_words)}")
+        
+        # OCR (if present, e.g., from scanned docs)
+        ocr = r.get("ocr_text", "").strip()
+        if ocr:
+            ocr_words = ocr.split()[:100]
+            parts.append(f"ocr: {' '.join(ocr_words)}")
+        
+        # Table data (concise)
+        table = r.get("table_text", "").strip()
+        if table:
+            table_words = table.split()[:80]
+            parts.append(f"table: {' '.join(table_words)}")
+        
+        # Chart/diagram (concise)
+        chart = r.get("chart_text", "").strip()
+        if chart:
+            chart_words = chart.split()[:80]
+            parts.append(f"chart: {' '.join(chart_words)}")
+        
+        # Skip caption_text, layout_text, color_info, spatial_info for documents
+        # to keep overall length manageable
+        
+        result = "\n".join(parts).strip()
+    
+    # ── Final safety check: limit to ~400 words (≈520 tokens) ────────────────
+    words = result.split()
+    if len(words) > 400:
+        pstatus(f"Truncating search_text from {len(words)} words to 400", C.YELLOW)
+        result = " ".join(words[:400])
+    
+    return result
 
 
 def _normalize_modality(raw: str) -> str:
@@ -1089,51 +1177,68 @@ def _ingest_image_direct(file_path: str) -> List[ChunkRecord]:
     _ensure_dirs()
     file_name = Path(file_path).name
 
-    # Copy image to persistent store
-    dest = IMAGE_STORE / file_name
-    if not dest.exists():
-        shutil.copy2(file_path, dest)
-    stored_path = str(dest)
+    try:
+        # Verify file exists and is readable
+        if not os.path.isfile(file_path):
+            perr(f"Image file not found: {file_path}")
+            return []
+        
+        file_size = os.path.getsize(file_path)
+        pstatus(f"VLM captioning image: {file_name} ({file_size/1024:.1f} KB)", C.MAGENTA)
 
-    pstatus(f"VLM captioning image: {file_name}", C.MAGENTA)
-    info = vlm_describe_image(stored_path)
+        # Copy image to persistent store
+        dest = IMAGE_STORE / file_name
+        if not dest.exists():
+            shutil.copy2(file_path, dest)
+            pstatus(f"  Copied to: {dest}", C.GRAY)
+        stored_path = str(dest)
 
-    if not any([info.get("caption"), info.get("ocr_text"), info.get("raw_description")]):
-        pstatus(f"VLM returned empty for {file_name}, skipping", C.YELLOW)
+        info = vlm_describe_image(stored_path)
+        pok(f"VLM response received for {file_name}")
+
+        if not any([info.get("caption"), info.get("ocr_text"), info.get("raw_description")]):
+            pstatus(f"VLM returned empty for {file_name}, skipping", C.YELLOW)
+            logger.warning(f"VLM empty response for {file_name}")
+            return []
+
+        # Build a comprehensive search text from all VLM output fields
+        full_description = info.get("raw_description", "")
+        caption          = info.get("caption", "")
+        ocr_text         = info.get("ocr_text", "")
+        color_info       = info.get("color_info", "")
+        spatial_info     = info.get("spatial_info", "")
+
+        rec: ChunkRecord = {
+            "chunk_id":    _sha1(file_path, "direct_image", file_name),
+            "file_path":   file_path,
+            "file_name":   file_name,
+            "modality":    "image",
+            "source_type": "direct_image",
+            "page_num":    0,
+            "parent_id":   f"{file_name}:image",
+            "figure_id":   "",
+            "title":       file_name,
+            "text":        full_description,
+            "ocr_text":    ocr_text,
+            "caption_text": caption,
+            "table_text":  "",
+            "chart_text":  "",
+            "layout_text": spatial_info,
+            "color_info":  color_info,
+            "spatial_info": spatial_info,
+            "audio_start_s": 0.0,
+            "audio_end_s":   0.0,
+            "image_path":  stored_path,   # CRITICAL: preserved for VLM reread at query time
+            "bbox":        "",
+        }
+        rec["search_text"] = _build_search_text(rec)
+        pok(f"Image chunk created: {rec['chunk_id'][:16]}...")
+        return [rec]
+    
+    except Exception as e:
+        perr(f"Error ingesting image {file_path}: {e}")
+        logger.exception(f"Image ingestion error for {file_path}")
         return []
-
-    # Build a comprehensive search text from all VLM output fields
-    full_description = info.get("raw_description", "")
-    caption          = info.get("caption", "")
-    ocr_text         = info.get("ocr_text", "")
-    color_info       = info.get("color_info", "")
-    spatial_info     = info.get("spatial_info", "")
-
-    rec: ChunkRecord = {
-        "chunk_id":    _sha1(file_path, "direct_image", file_name),
-        "file_path":   file_path,
-        "file_name":   file_name,
-        "modality":    "image",
-        "source_type": "direct_image",
-        "page_num":    0,
-        "parent_id":   f"{file_name}:image",
-        "figure_id":   "",
-        "title":       file_name,
-        "text":        full_description,
-        "ocr_text":    ocr_text,
-        "caption_text": caption,
-        "table_text":  "",
-        "chart_text":  "",
-        "layout_text": spatial_info,
-        "color_info":  color_info,
-        "spatial_info": spatial_info,
-        "audio_start_s": 0.0,
-        "audio_end_s":   0.0,
-        "image_path":  stored_path,   # CRITICAL: preserved for VLM reread at query time
-        "bbox":        "",
-    }
-    rec["search_text"] = _build_search_text(rec)
-    return [rec]
 
 
 # ── Audio ingestion ───────────────────────────────────────────────────────────
@@ -1163,6 +1268,29 @@ def run_ingest(file_paths: List[str], reset: bool = False) -> Dict[str, Any]:
     if reset:
         reset_collections()
 
+    # ── Validate all files exist before starting ──────────────────────────────
+    pstatus(f"Validating {len(file_paths)} file(s)...")
+    missing = []
+    for p in file_paths:
+        if not os.path.isfile(p):
+            missing.append(p)
+            perr(f"Not found: {p}")
+        else:
+            size_kb = os.path.getsize(p) / 1024
+            pok(f"Found: {Path(p).name} ({size_kb:.1f} KB)")
+    
+    if missing:
+        perr(f"{len(missing)} file(s) not found. Cannot proceed.")
+        return {
+            "files": [],
+            "chunks_ingested": 0,
+            "elapsed_ms": 0,
+            "modalities": {},
+            "image_files": 0,
+            "audio_files": 0,
+            "doc_files": 0,
+        }
+
     # Separate files by type
     image_files = [p for p in file_paths if Path(p).suffix.lower() in SUPPORTED_IMAGE_EXTS]
     audio_files = [p for p in file_paths if Path(p).suffix.lower() in SUPPORTED_AUDIO_EXTS]
@@ -1173,6 +1301,8 @@ def run_ingest(file_paths: List[str], reset: bool = False) -> Dict[str, Any]:
     txt_files   = [p for p in file_paths if Path(p).suffix.lower() in {".txt", ".md"}]
     docx_files  = [p for p in file_paths if Path(p).suffix.lower() == ".docx"]
     pptx_files  = [p for p in file_paths if Path(p).suffix.lower() == ".pptx"]
+
+    pstatus(f"File types: {len(doc_files)} docs, {len(image_files)} images, {len(audio_files)} audio, {len(html_files)} html, {len(txt_files)} text", C.GRAY)
 
     # Determine which docs go to NV-Ingest vs fallback extractors
     nvingest_files = [p for p in doc_files
@@ -1215,14 +1345,30 @@ def run_ingest(file_paths: List[str], reset: bool = False) -> Dict[str, Any]:
         all_records.extend(_extract_txt(p))
 
     # Images (CRITICAL: direct VLM captioning, no PDF conversion)
-    for p in image_files:
-        psec(f"Image (direct VLM): {Path(p).name}")
-        all_records.extend(_ingest_image_direct(p))
+    if image_files:
+        psec("Direct Image VLM Captioning")
+        for p in image_files:
+            pstatus(f"Processing image: {Path(p).name}", C.CYAN)
+            try:
+                records = _ingest_image_direct(p)
+                all_records.extend(records)
+                pok(f"Image processed: {len(records)} chunk(s)")
+            except Exception as e:
+                perr(f"Failed to ingest image {Path(p).name}: {e}")
+                logger.exception(f"Image ingestion error: {p}")
 
     # Audio
-    for p in audio_files:
-        psec(f"Audio (Whisper): {Path(p).name}")
-        all_records.extend(_ingest_audio(p))
+    if audio_files:
+        psec("Audio Transcription (Whisper)")
+        for p in audio_files:
+            pstatus(f"Processing audio: {Path(p).name}", C.CYAN)
+            try:
+                records = _ingest_audio(p)
+                all_records.extend(records)
+                pok(f"Audio processed: {len(records)} chunk(s)")
+            except Exception as e:
+                perr(f"Failed to ingest audio {Path(p).name}: {e}")
+                logger.exception(f"Audio ingestion error: {p}")
 
     # Embed and store everything
     if all_records:
@@ -2214,13 +2360,35 @@ Examples:
     pok(f"Quality gate      : skip if top rerank < {MIN_GENERATION_SCORE}")
     pok(f"Artifact root     : {ARTIFACT_ROOT}")
 
+    # ── Auto-ingest files from INGEST_FILES if defined ──────────────────────
+    files_to_ingest = []
+    if INGEST_FILES:
+        files_to_ingest = [f.strip() for f in INGEST_FILES if f.strip()]
+        if files_to_ingest:
+            pstatus(f"Found {len(files_to_ingest)} file(s) in INGEST_FILES")
+
+    # ── Handle command-line --ingest argument (overrides INGEST_FILES) ───────
     if args.ingest:
-        valid   = [p for p in args.ingest if os.path.isfile(p)]
-        missing = [p for p in args.ingest if not os.path.isfile(p)]
+        files_to_ingest = args.ingest
+        pstatus(f"Using {len(files_to_ingest)} file(s) from --ingest argument")
+
+    # ── Perform ingestion if any files specified ────────────────────────────
+    if files_to_ingest:
+        valid   = [p for p in files_to_ingest if os.path.isfile(p)]
+        missing = [p for p in files_to_ingest if not os.path.isfile(p)]
+        
         for p in missing:
             perr(f"File not found: {p}")
+        
         if valid:
-            run_ingest(valid, reset=args.reset)
+            psec(f"Auto-ingesting {len(valid)} file(s)...")
+            try:
+                result = run_ingest(valid, reset=args.reset)
+                pok(f"Ingestion complete: {result.get('chunks_ingested', 0)} chunks ingested in {result.get('elapsed_ms', 0):,}ms")
+            except Exception as exc:
+                perr(f"Ingestion failed: {exc}")
+                logger.exception("Ingestion failed")
+                sys.exit(1)
     elif args.reset:
         reset_collections()
         pok("Collections reset.")
@@ -2230,49 +2398,49 @@ Examples:
 
 if __name__ == "__main__":
     main()
--------------------------------------------------------------------------------------------
 
 
+ Milvus DB         : ./enterprise_rag_milvus.db
+  OK  Text collection   : rag_text_chunks
+  OK  Image collection  : rag_image_patches
+  OK  Embed model       : nvidia/nv-embedqa-e5-v5 (dim=1024)
+  OK  Primary LLM       : meta/llama-3.3-70b-instruct
+  OK  Fallback LLM      : nvidia/llama-3.1-nemotron-70b-instruct
+  OK  Caption/VLM model : nvidia/llama-3.1-nemotron-nano-vl-8b-v1
+  OK  Reranker          : cross-encoder/ms-marco-MiniLM-L-12-v2
+  OK  Whisper model     : base
+  OK  VLM reread top-N  : 3
+  OK  Quality gate      : skip if top rerank < -10.0
+  OK  Artifact root     : rag_artifacts
+  > Found 1 file(s) in INGEST_FILES
 
+── Auto-ingesting 1 file(s)... ────────────────────────────
+  > Validating 1 file(s)...
+  OK  Found: merger_agreement 1.pdf (562.3 KB)
+  > File types: 1 docs, 0 images, 0 audio, 0 html, 0 text
 
-What the official NVIDIA docs actually say — with proof
-On extract_images=True
-The official NV-Ingest API docs state that extract_images=True means: "the function will identify, extract, and process images embedded within the document." The function signature explicitly says the input must be a DataFrame with a document_type: "pdf" column. NVIDIA
-The NVIDIA Langflow documentation confirms exactly what gets stored: "For images: The image caption." Not pixels, not a visual embedding — just the caption text string. Langflow
-The official Python API example for image extraction shows .files("path/to/doc-with-images.pdf") — a PDF as the input. When they show direct image captioning, the example is still .extract(extract_images=True) on a PDF, not on a raw JPEG. NVIDIA
-So your lead was 100% right. extract_images=True means "find images that are embedded inside a PDF page, crop them out, run the caption VLM, store the caption text." No raw pixel bytes ever enter Milvus.
+── NV-Ingest (PDF/DOCX/PPTX) ──────────────────────────────
+  > Importing NV-Ingest...
+2026-04-08 06:51:39.279209918 [W:onnxruntime:Default, device_discovery.cc:132 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename ""5620e0c7-8062-4dce-aeb7-520c7ef76171"" dit not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+
+  OK  NV-Ingest imported (8.7s)
+  > Waiting for broker localhost:7671...
+  OK  Broker ready
+  OK  Pipeline ready (17.2s)
+  >   -> merger_agreement 1.pdf (562 KB)
+Processing: 100%|██████████████████████████████████████████████████████████████████| 1/1 [01:03<00:00, 63.14s/doc]
+  ERR Ingestion failed: NV-Ingest returned no usable records. Check pipeline config and _normalize_nvingest_record().
+Ingestion failed
+Traceback (most recent call last):
+  File "/home/clouduser01/jaswanth/rag_agent.py", line 2386, in main
+    result = run_ingest(valid, reset=args.reset)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/clouduser01/jaswanth/rag_agent.py", line 1323, in run_ingest
+    records = _run_nvingest(nvingest_files)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/clouduser01/jaswanth/rag_agent.py", line 1156, in _run_nvingest
+    raise RuntimeError(
+RuntimeError: NV-Ingest returned no usable records. Check pipeline config and _normalize_nvingest_record().
+Killed subprocess group 2225362
+(myenv) clouduser01@AZRCIDEVNIVIDIA:~/jaswanth$ 
 
-On whether NVIDIA has a native image pixel embedding solution
-NVIDIA's own RAG Blueprint documentation for VLM embedding explicitly warns: "PDF Support Only: The VLM embedding feature is currently only supported for PDF documents. Other document formats (Word, PowerPoint, etc.) are not supported with VLM embedding. The VLM embedding feature is experimental and responses may not be accurate." NVIDIA
-The environment variables that control it are APP_NVINGEST_EXTRACTIMAGES: "False" by default in their VLM embedding guide — image extraction is disabled even when using the multimodal embedding model, because the VLM embedding feature works on page images, not raw image files. NVIDIA
-NVIDIA's NeMo Retriever documentation describes the embedding + indexing step as: "Embed all extracted text from text chunks and images, and then insert into Milvus." The word "images" here refers to image-derived text (captions, OCR) — not image pixels. GitHub
-So the answer to your question is: NVIDIA does not have a production-ready native image pixel embedding pipeline for raw JPEG/PNG files. The VLM embed model (nvidia/llama-nemotron-embed-vl-1b-v2) exists but is PDF-only and marked experimental.
-
-Why manual embedding is still the right choice for your use case
-The Milvus documentation on ColPali (the state-of-the-art approach for visual document retrieval) explains that proper image-native RAG requires treating each page as an image divided into patches, where "a document page image of 448×448 pixels can produce 1,024 patches, each measuring 14×14 pixels." Each patch gets its own embedding — meaning one page = 1,024 vectors in Milvus. Milvus
-This is the architecture you would need for true pixel-level visual RAG. The problem is: at that vector count, Milvus Lite (the local .db file version you're using) runs out of memory fast, and ColPali requires a GPU. For a demo environment, the approach in the code — VLM captioning with targeted VLM reread at query time — gives you comparable answer quality without that infrastructure.
-
-The 9-node pipeline explained step by step
-Here is what every node does, with a concrete example using your Singapore ID card images.
-Example query: "What does the red legend indicate in the chart?" or "What is the identity card number?"
-Node 1 — guardrail: Strips filler phrases ("can you tell me what...") and checks for prompt injection. Your query becomes just "red legend in chart" or "identity card number." Cleaner queries embed more accurately.
-Node 2 — intent_router: Detects "image" intent because the query contains the word "card" or "red." Sets has_visual_intent = True. This flag is what activates the image collection search and the VLM reread node later. Without intent routing, every query would only search text.
-Node 3 — query_expander: Sends your cleaned query to the LLM and gets 2 paraphrases back. So you now have 3 variants: "identity card number", "NRIC number on the card", "ID card unique identifier". All 3 go to the retriever. This solves the vocabulary mismatch problem — the ingested caption might say "NRIC" while you asked "identity card number."
-Node 4 — dual_retriever: Searches the text collection with all 3 variants, and because has_visual_intent=True, also searches the image collection separately. Merges and deduplicates by chunk_id. For your ID card, the image collection returns the chunk with image_path pointing to the stored JPEG — this is the crucial link.
-Node 5 — cross_reranker: Runs every candidate chunk through the ms-marco-MiniLM-L-12-v2 cross-encoder with your original query. This scores chunks by actual semantic relevance, not just vector distance. Also applies the quality gate: if the top score is below -10.0, the pipeline stops and says "not found" rather than hallucinating. This was removed in the Codex v3 — we put it back.
-Node 6 — layout_rescue: When visual intent is detected, looks up all chunks that share the same parent_id (same page) as the top-ranked chunks. Pulls in surrounding text, nearby captions, adjacent OCR — the full context around the image. This is important for charts where the x-axis label is a separate text chunk from the chart image itself.
-Node 7 — vlm_reread (the key missing piece): Loads the actual JPEG from disk, base64-encodes it, sends it to the VLM with your exact question: "What is the identity card number?" or "What does the red legend indicate?" The VLM now reads the image specifically to answer that question — not a generic "Caption the content of this image." This targeted answer is prepended to evidence with priority score 999.0, meaning it always appears first in context.
-This is why your ID card test was returning "no information" — v2 and v3 had no way to re-read the image at query time. The ingestion caption said "a pink Singapore ID card" and that was all the retriever had to work with.
-Node 8 — evidence_builder: Assembles the final evidence list. VLM reread answers go first (highest priority). Then ranked text/image chunks grouped by parent. Respects MAX_CONTEXT=8 limit.
-Node 9 — generator: Builds the final prompt with conversation history (last 5 turns), all evidence labeled by type (VLM reread, image, table, audio transcript), and calls the LLM. The system prompt tells the LLM to treat VLM reread evidence as the most authoritative source for visual queries.
-
-Can the 9 nodes be reduced?
-You could technically merge some nodes but each removal costs something specific:
-MergeWhat you loseRemove intent_routerNo visual flag → image collection never searched, VLM reread never triggersRemove query_expanderNRIC vs "identity card number" vocabulary gap returns — retrieval misses increaseRemove cross_rerankerNo quality gate → LLM called even when nothing relevant exists → hallucinationsRemove layout_rescueChart x-axis labels won't be found alongside chart image chunksRemove vlm_rereadRed legend, color questions, spatial questions all fail — back to v2 behaviorRemove evidence_builderVLM reread results lose priority ordering
-
-----------------------------------------------------------------------------------------------------------------------
-
-https://docs.nvidia.com/nemo/retriever/25.9.0/extraction/api-docs/_modules/nv_ingest_api/interface/extract.html
-https://docs.nvidia.com/nemo/retriever/latest/extraction/nv-ingest-python-api/
-https://docs.nvidia.com/rag/2.5.0/vlm-embed.html
-https://milvus.io/docs/search-with-embedding-lists.md
+yesterday it was working why suddenly today not working at all?
