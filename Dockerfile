@@ -1,39 +1,57 @@
-=== STEP 2 SUCCEEDED ===
-Embeddings stored in Milvus Lite: milvus.db
-Collection: multimodal_docs
+# ingest_documents.py
+from nv_ingest_client.client import Ingestor, NvIngestClient
 
-=== STEP 3: Querying ingested documents ===
-============================================================
-INFO:httpx:HTTP Request: POST https://integrate.api.nvidia.com/v1/embeddings "HTTP/1.1 200 OK"
-INFO:httpx:HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+FILEPATHS = [
+    "data/multimodal/multimodal_test.pdf",
+    "data/multimodal/woods_frost.pdf"
+]
 
-Q: What is the name mentioned in the ID
-A: The name mentioned in the ID is a hybrid name that appears to be a mix of an Asian name and the English name "Mom". However, the exact full name is not specified in the context.
-------------------------------------------------------------
-INFO:httpx:HTTP Request: POST https://integrate.api.nvidia.com/v1/embeddings "HTTP/1.1 200 OK"
-INFO:httpx:HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+COLLECTION_NAME = "multimodal_data_nvingest"
 
-Q: what is the service number mentioned?
-A: The context does not mention a "service number", it mentions an "identity card number" which ends in an 'e', but the exact number is not provided.
-------------------------------------------------------------
-INFO:httpx:HTTP Request: POST https://integrate.api.nvidia.com/v1/embeddings "HTTP/1.1 200 OK"
-INFO:httpx:HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+MILVUS_URI = "http://localhost:19530"
+MINIO_ENDPOINT = "localhost:9010"
 
-Q: What is the place birth?
-A: The place of birth is not explicitly stated in the context, it is only mentioned that the information is present on the identity card, to the right of the photo, along with the date of birth and country of birth, but the actual place of birth is not provided.
-------------------------------------------------------------
-INFO:httpx:HTTP Request: POST https://integrate.api.nvidia.com/v1/embeddings "HTTP/1.1 200 OK"
-INFO:httpx:HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+# Server Mode (Create NeMo Retriever Library client)
+client = NvIngestClient(
+    message_client_hostname="localhost",
+    message_client_port=7670
+)
 
-Q: what is her data of birth?
-A: The answer is not in the context. The context mentions that her date of birth is listed on the identity card, but it does not provide the actual date.
-------------------------------------------------------------
-INFO:httpx:HTTP Request: POST https://integrate.api.nvidia.com/v1/embeddings "HTTP/1.1 200 OK"
-INFO:httpx:HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+ingestor = Ingestor(client=client)
 
-Q: which country is she belongs?
-A: The country she belongs to is Singapore.
-------------------------------------------------------------
-Killed subprocess group 2706858
-E20260408 17:13:33.459793 2713643 server.cpp:47] [SERVER][BlockLock][milvus] Process exit
-(myenv) clouduser01@AZRCIDEVNIVIDIA:~/jaswanth$ 
+ingestor = ingestor.files(FILEPATHS)
+
+ingestor = ingestor.extract(
+                extract_text=True,
+                extract_tables=True,
+                extract_charts=True,
+                extract_images=False,
+                text_depth="page",
+                table_output_format="markdown"
+            )
+ingestor = ingestor.split(
+                tokenizer="intfloat/e5-large-unsupervised",
+                chunk_size=51,
+                chunk_overlap=15,
+                params={"split_source_types": ["PDF", "text", "html", "mp3", "docx", "pptx"]},
+            )
+
+ingestor = ingestor.embed(
+    # For self-hosted: "http://nemotron-embedding-ms:8000/v1"
+    # For cloud (NVIDIA-hosted): "https://integrate.api.nvidia.com/v1"
+    endpoint_url="http://nemotron-embedding-ms:8000/v1",
+    model_name="nvidia/llama-nemotron-embed-1b-v2"
+)
+
+ingestor = ingestor.vdb_upload(
+                collection_name=COLLECTION_NAME,
+                milvus_uri=MILVUS_URI,
+                minio_endpoint=MINIO_ENDPOINT,
+                sparse=False,
+                enable_images=True,
+                recreate=False,
+                dense_dim=2048,
+                stream=False
+            )
+
+results, failures = ingestor.ingest(show_progress=True, return_failures=True)
