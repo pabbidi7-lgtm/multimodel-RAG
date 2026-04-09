@@ -147,3 +147,32 @@ so to preserve them we need to run the VLM model so that it can understand and p
 it will work right
 so evreything should be in milvus lite .db 
 make it happen 
+
+
+
+
+
+
+
+[09/04, 10:08 am] Naeem LTM: So that means without exporting this nim endpoints for tables/ images/ graphic element
+We can’t run the images that means the output I got from the driving licence would be the result 
+
+So that’s in the case implement this nim end points and provide the whole updated code of mine and explain after adding this modality wise nim endpoints how does the ingestion extraction splitting embedding happens show me the small demo of it
+[09/04, 10:14 am] Naeem LTM: Your problem is not that NIMs don’t exist in the cloud — they do. The problem is that your code never told the pipeline WHERE those cloud NIMs are. Without the endpoint env vars set, the pipeline skips OCR entirely and falls back to pdfium text extraction, which reads zero text from a JPEG.
+The release notes explicitly state: “We currently do not support OCR-based text extraction. This was discovered in an unsupported use case and is not a product functionality issue.”
+[09/04, 10:14 am] Naeem LTM: What You Need To Set
+NV-Ingest uses a consistent naming pattern: {PREFIX}_GRPC_ENDPOINT, {PREFIX}_HTTP_ENDPOINT, and {PREFIX}_INFER_PROTOCOL for each NIM. The get_nim_service() function reads these and authenticates using NVIDIA_API_KEY. 
+Set these before running, pointing to the hosted cloud endpoints:
+[09/04, 10:14 am] Naeem LTM: # OCR NIM — reads text from images
+export PADDLE_HTTP_ENDPOINT="https://ai.api.nvidia.com/v1/cv/paddleocr/ocr"
+export PADDLE_INFER_PROTOCOL="http"
+
+# YOLOX — detects tables/charts/graphics in images  
+export YOLOX_GRAPHIC_ELEMENTS_HTTP_ENDPOINT="https://ai.api.nvidia.com/v1/cv/nvidia/nemoretriever-graphic-elements-v1"
+export YOLOX_GRAPHIC_ELEMENTS_INFER_PROTOCOL="http"
+
+export YOLOX_TABLE_STRUCTURE_HTTP_ENDPOINT="https://ai.api.nvidia.com/v1/cv/nvidia/nemoretriever-table-structure-v1"
+export YOLOX_TABLE_STRUCTURE_INFER_PROTOCOL="http"
+
+# Already working (embedding)
+export NVIDIA_API_KEY=nvapi-...
