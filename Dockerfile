@@ -1,190 +1,195 @@
-import logging, os, time
+The Core Problem — Why Your Nemotron Models Are NOT Running
+Your code is correct. Your pipeline starts. Your extraction runs. But the Nemotron models (OCR, page-elements, graphic-elements, table-structure) are never called because of one reason:
+Those models are not cloud API calls. They are locally running inference servers that your pipeline connects to via HTTP/gRPC on localhost ports.
+When you write:
+bashexport OCR_HTTP_ENDPOINT="https://ai.api.nvidia.com/v1/cv/nvidia/paddle-ocr"
+This does NOT work for nv-ingest library mode. The pipeline internally expects something like:
+bashexport OCR_HTTP_ENDPOINT="http://localhost:8009"
+Because nv-ingest expects those NIMs to be running as servers on your machine, not as cloud API calls.
 
-import pymilvus
-pymilvus.connections.disconnect("default")
+What the GitHub Repo Actually Shows
+When you look at https://github.com/NVIDIA/NeMo-Retriever/blob/release/25.9.0/README.md, the architecture diagram shows:
+Your pipeline.py
+      ↓
+nv-ingest pipeline (library mode)
+      ↓
+calls localhost:8009  → PaddleOCR NIM (running locally)
+calls localhost:8000  → YOLOX page-elements NIM (running locally)  
+calls localhost:8004  → YOLOX graphic-elements NIM (running locally)
+calls localhost:8007  → YOLOX table-structure NIM (running locally)
+Every one of those services must be downloaded and running on your machine before your pipeline.py can use them.
 
-from nv_ingest.framework.orchestration.ray.util.pipeline.pipeline_runners import (
-    run_pipeline,
-    PipelineCreationSchema
-)
-from nv_ingest_client.client import Ingestor, NvIngestClient
-from nv_ingest_api.util.message_brokers.simple_message_broker import SimpleClient
-from nv_ingest_client.util.process_json_files import ingest_json_results_to_blob
+What Your Lead Means by "Custom Functions from the Repo"
+Your lead is saying this:
+Inside the repo there are files like:
+src/nv_ingest/stages/extractors/
+src/nv_ingest/stages/nim/
+These files contain the actual code that calls OCR, page-elements, graphic-elements, table-structure NIMs. Your lead wants you to look at how those functions call the NIMs and either:
 
-# ------------ CONFIG ------------
-assert "NVIDIA_API_KEY" in os.environ, "Set env: export NVIDIA_API_KEY=..."
-NVIDIA_API_KEY = os.environ["NVIDIA_API_KEY"]
+Run those NIMs locally so the existing code works, OR
+Understand the calling pattern and wire it into your pipeline
 
-# ------------ START PIPELINE ------------
-config = PipelineCreationSchema()
+She already ran this successfully. What she ran was the full stack — NIMs running locally + pipeline.py connecting to them.
 
-run_pipeline(
-    config,
-    block=False,
-    disable_dynamic_scaling=True,
-    run_in_subprocess=True
-)
+The Two Ways to Run These NIMs Locally
+Option A — Docker (The Standard Way)
+Each NIM is a Docker container. You pull and run each one:
+bash# OCR NIM
+docker run --gpus all -p 8009:8000 \
+  -e NGC_API_KEY=$NVIDIA_API_KEY \
+  nvcr.io/nvidia/nv-ingest/paddle-ocr:25.9.0
 
-print("Waiting for pipeline to initialize...")
-time.sleep(15)
-print("Pipeline ready. Connecting client...")
+# Page elements NIM  
+docker run --gpus all -p 8000:8000 \
+  -e NGC_API_KEY=$NVIDIA_API_KEY \
+  nvcr.io/nvidia/nv-ingest/nv-yolox-page-elements-v1:25.9.0
 
-client = NvIngestClient(
-    message_client_allocator=SimpleClient,
-    message_client_port=7671,
-    message_client_hostname="localhost"
-)
+# Graphic elements NIM
+docker run --gpus all -p 8004:8000 \
+  -e NGC_API_KEY=$NVIDIA_API_KEY \
+  nvcr.io/nvidia/nv-ingest/nv-yolox-graphic-elements-v1:25.9.0
 
-milvus_uri = "milvus.db"
-collection_name = "multimodal_docs"
-sparse = False
+# Table structure NIM
+docker run --gpus all -p 8007:8000 \
+  -e NGC_API_KEY=$NVIDIA_API_KEY \
+  nvcr.io/nvidia/nv-ingest/nv-yolox-table-structure-v1:25.9.0
+Then your bash exports become:
+bashexport OCR_HTTP_ENDPOINT="http://localhost:8009"
+export YOLOX_HTTP_ENDPOINT="http://localhost:8000"
+export YOLOX_GRAPHIC_ELEMENTS_HTTP_ENDPOINT="http://localhost:8004"
+export YOLOX_TABLE_STRUCTURE_HTTP_ENDPOINT="http://localhost:8007"
+export OCR_INFER_PROTOCOL="http"
+export YOLOX_INFER_PROTOCOL="http"
+export YOLOX_GRAPHIC_ELEMENTS_INFER_PROTOCOL="http"
+export YOLOX_TABLE_STRUCTURE_INFER_PROTOCOL="http"
+Option B — Docker Compose (What the Repo Uses)
+The repo has a docker-compose.yaml file that starts ALL services together including all NIMs. This is the cleanest way. From the repo root:
+bashdocker compose up
+That starts everything — pipeline service + all NIM containers + all ports configured correctly.
 
-# =========================================================================
-#  STEP 1: Basic text extraction (sanity check)
-# =========================================================================
-print("\n=== STEP 1: Basic text extraction ===")
+Why build.nvidia.com API Calls Don't Work Here
+build.nvidia.com gives you REST API access for prototyping single calls. For example you can send one image and get OCR back.
+But nv-ingest library mode internally sends many small requests to these NIMs during pipeline processing — one per page, one per detected region, etc. It expects a low-latency local server, not a cloud API with authentication headers and rate limits on every call.
+The pipeline was designed for local NIM servers. That is why your cloud endpoint exports were silently ignored.
 
-ingestor = (
-    Ingestor(client=client)
-    .files("Docs/Singapore_NID_F 1.jpeg")
-    .extract(
-        extract_text=True,
-        extract_tables=False,
-        extract_charts=False,
-        extract_images=False,
-        extract_infographics=False,
-        text_depth="page",
-    )
-)
+What Actually Happened When Your Lead Ran It
+Your lead ran either:
 
-print("Starting ingestion...")
-t0 = time.time()
-results, failures = ingestor.ingest(show_progress=True, return_failures=True)
-t1 = time.time()
-print(f"Total time: {t1 - t0:.2f} seconds")
-print(f"\nResults:  {len(results)}")
-print(f"Failures: {len(failures)}")
+docker compose up from the repo — which started all NIM containers locally, then ran pipeline.py against localhost ports, OR
+Had access to a server where those NIM containers were already running
 
-if failures:
-    print("\n=== STEP 1 FAILURES ===")
-    for i, f in enumerate(failures):
-        print(f"--- [{i}] ---\n{f}")
-    print("\nFix Step 1 before proceeding.")
+She did NOT use build.nvidia.com API endpoints inside the pipeline.
 
-elif results:
-    print("\n=== STEP 1 SUCCEEDED ===")
-    blob = ingest_json_results_to_blob(results[0])
-    print(blob[:500] + "..." if len(blob) > 500 else blob)
+What You Need to Do Now — Clear Steps
+Step 1 — Check if Docker is available on your machine:
+bashdocker --version
+docker compose version
+Step 2 — Check if you have GPU and enough VRAM:
+Each NIM needs GPU. Rough requirements:
 
-    # =========================================================================
-    #  STEP 2: Full extraction + split + caption + embed + vdb upload
-    # =========================================================================
-    print("\n=== STEP 2: Full pipeline (extract + split + caption + embed + vdb) ===")
+PaddleOCR: ~2GB VRAM
+YOLOX page-elements: ~2GB VRAM
+YOLOX graphic-elements: ~2GB VRAM
+YOLOX table-structure: ~2GB VRAM
 
-    ingestor_full = (
-        Ingestor(client=client)
-        .files("Docs/Singapore_NID_F 1.jpeg")
-        .extract(
-            extract_text=True,
-            extract_tables=True,
-            extract_charts=True,
-            extract_images=True,
-            extract_infographics=True,
-            table_output_format="markdown",
-            text_depth="page",
-        )
-        .split(
-            tokenizer="intfloat/e5-large-unsupervised",
-            chunk_size=512,
-            chunk_overlap=50,
-            params={"split_source_types": ["PDF", "text", "html", "mp3", "docx", "pptx"]},
-        )
-        .caption(
-            endpoint_url="https://integrate.api.nvidia.com/v1/chat/completions",
-            model_name="nvidia/llama-3.1-nemotron-nano-vl-8b-v1",
-            api_key=NVIDIA_API_KEY,
-        )
-        .embed()
-        .vdb_upload(
-            collection_name=collection_name,
-            milvus_uri=milvus_uri,
-            sparse=sparse,
-            dense_dim=2048
-        )
-    )
+bashnvidia-smi
+Step 3 — Clone the repo if you haven't:
+bashgit clone -b release/25.9.0 https://github.com/NVIDIA/NeMo-Retriever.git
+cd NeMo-Retriever
+Step 4 — Check the docker-compose file:
+bashcat docker-compose.yaml
+Look for the NIM service definitions and what ports they use.
+Step 5 — Start everything:
+bashexport NVIDIA_API_KEY="nvapi-yourkey"
+docker compose up
+Step 6 — Then in a separate terminal run your pipeline.py with localhost endpoint exports.
 
-    print("Starting full ingestion...")
-    t0 = time.time()
-    results_full, failures_full = ingestor_full.ingest(show_progress=True, return_failures=True)
-    t1 = time.time()
-    print(f"Total time: {t1 - t0:.2f} seconds")
-    print(f"\nResults:  {len(results_full)}")
-    print(f"Failures: {len(failures_full)}")
+Summary in Simple Words
+Your pipeline.py code is fine. Your extraction settings are fine. The only missing piece is that the 4 Nemotron NIM models must be running as local Docker containers on specific ports before your pipeline starts. Without those containers running, the pipeline silently falls back to basic text-only extraction. That is why you get output but no real image/chart/table extraction.
+Your lead ran the full docker compose stack. That is what you need to replicate.so that means when i will be in github repo and i will do docker compose up the nemotron modesl will start?or should i download the models and steup that with the gpu then do the docker compose up?
+so the repo was pushed and it is 25.9.0 version whcich is older version
+so by cloning and them and running the docker compose up that means the models will start locally ?i was not getting this casue those models and ports already in coantainer those containers will be not available in my laptop right?
+how does those container will start and how does  i can run them?8:08 AMGreat question. Let me explain this clearly.
 
-    if failures_full:
-        print("\n=== STEP 2 FAILURES ===")
-        for i, f in enumerate(failures_full):
-            print(f"--- [{i}] ---\n{f}")
-    else:
-        print("\n=== STEP 2 SUCCEEDED ===")
-        print(f"Embeddings stored in Milvus Lite: {milvus_uri}")
-        print(f"Collection: {collection_name}")
+How Docker + NIM Works — Simple Explanation
+When you run docker compose up, Docker does this automatically:
+docker compose up
+      ↓
+reads docker-compose.yaml
+      ↓
+sees "I need nvcr.io/nvidia/paddle-ocr:25.9.0"
+      ↓
+checks if image exists locally → NO
+      ↓
+automatically PULLS (downloads) from NVIDIA's container registry
+      ↓
+starts the container with GPU access
+      ↓
+model is now running on localhost:8009
+You do NOT manually download models. Docker pulls everything automatically using your NVIDIA API key to authenticate.
 
-        # =========================================================================
-        #  STEP 3: Retrieval + RAG queries
-        # =========================================================================
-        print("\n=== STEP 3: Querying ingested documents ===")
+But Here Is The Honest Problem For You
+These containers are very large and need serious hardware.
+NIM ContainerSizeVRAM NeededPaddleOCR~8GB download4GB VRAMYOLOX page-elements~6GB download4GB VRAMYOLOX graphic-elements~6GB download4GB VRAMYOLOX table-structure~6GB download4GB VRAMnv-ingest itself~15GB download-
+Total: ~40GB+ download, needs 16GB+ VRAM minimum
+This will NOT run on a normal laptop. It needs a proper GPU server.
 
-        from openai import OpenAI
-        from nv_ingest_client.util.milvus import nvingest_retrieval
+So Ask Your Lead These 3 Questions Right Now
+This is the most important thing you can do:
+Question 1:
 
-        queries = [
-            "What is the name mentioned in the ID",
-            "what is the service number mentioned?",
-            "What is the place birth?",
-            "what is her data of birth?",
-            "which country is she belongs?",
-        ]
+"When you ran the pipeline successfully, were you running on a GPU server or your laptop?"
 
-        llm_client = OpenAI(
-            base_url="https://integrate.api.nvidia.com/v1",
-            api_key=NVIDIA_API_KEY
-        )
+Question 2:
 
-        print("=" * 60)
-        for q in queries:
-            retrieved_docs = nvingest_retrieval(
-                [q],
-                collection_name,
-                milvus_uri=milvus_uri,
-                hybrid=sparse,
-                top_k=10,
-            )
+"Do we have a shared GPU server I can SSH into where the NIM containers are already running?"
 
-            if retrieved_docs and retrieved_docs[0]:
-                context = "\n\n".join([doc["entity"]["text"] for doc in retrieved_docs[0]])
-            else:
-                context = "No relevant content found."
+Question 3:
 
-            prompt = f"""Use the following context to answer the question.
-If the answer is not in the context, say so.
+"Can you share the exact docker-compose command or environment setup you used?"
 
-Context:
-{context}
 
-Question: {q}
-Answer:"""
+The Three Realistic Scenarios
+Scenario A — You have a GPU server available
+bash# SSH into server
+ssh user@your-gpu-server
 
-            completion = llm_client.chat.completions.create(
-                model="meta/llama-3.3-70b-instruct",
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=1024,
-                temperature=0.7,
-            )
+# Clone repo
+git clone -b release/25.9.0 https://github.com/NVIDIA/NeMo-Retriever.git
+cd NeMo-Retriever
 
-            print(f"\nQ: {q}")
-            print(f"A: {completion.choices[0].message.content}")
-            print("-" * 60)
+# Set key (needed to pull containers from NVIDIA registry)
+export NVIDIA_API_KEY="nvapi-yourkey"
+export NGC_API_KEY="nvapi-yourkey"  # same key, different variable name
 
-else:
-    print("\nNo results and no failures — unexpected state.")
+# Pull and start everything
+docker compose up
+# This will take 30-60 minutes first time (downloading ~40GB)
+Scenario B — NIMs already running on a shared server
+Your lead may have already started the NIM containers on a team server. In this case you just point your localhost exports to that server's IP:
+bashexport OCR_HTTP_ENDPOINT="http://TEAM_SERVER_IP:8009"
+export YOLOX_HTTP_ENDPOINT="http://TEAM_SERVER_IP:8000"
+export YOLOX_GRAPHIC_ELEMENTS_HTTP_ENDPOINT="http://TEAM_SERVER_IP:8004"
+export YOLOX_TABLE_STRUCTURE_HTTP_ENDPOINT="http://TEAM_SERVER_IP:8007"
+Scenario C — You only have a laptop
+You cannot run the full stack locally. You need cloud GPU access like:
+
+AWS EC2 with A100/H100
+Google Cloud with A100
+NVIDIA LaunchPad (free access sometimes available)
+
+
+What the Repo Clone Actually Contains
+When you clone the repo, you get:
+NeMo-Retriever/
+├── docker-compose.yaml        ← defines all NIM containers + ports
+├── docker-compose.override.yaml
+├── src/
+│   └── nv_ingest/
+│       └── stages/
+│           ├── nim/           ← code that CALLS the NIM containers
+│           └── extractors/    ← extraction logic
+├── examples/
+│   └── pipeline.py            ← similar to your pipeline.py
+└── README.md
+The repo contains the code that calls the NIMs, not the NIMs themselves. The NIMs are pulled as Docker containers from nvcr.io (NVIDIA's container registry) when you run docker compose up.
