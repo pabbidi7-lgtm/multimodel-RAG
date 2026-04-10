@@ -1,195 +1,160 @@
-The Core Problem — Why Your Nemotron Models Are NOT Running
-Your code is correct. Your pipeline starts. Your extraction runs. But the Nemotron models (OCR, page-elements, graphic-elements, table-structure) are never called because of one reason:
-Those models are not cloud API calls. They are locally running inference servers that your pipeline connects to via HTTP/gRPC on localhost ports.
-When you write:
-bashexport OCR_HTTP_ENDPOINT="https://ai.api.nvidia.com/v1/cv/nvidia/paddle-ocr"
-This does NOT work for nv-ingest library mode. The pipeline internally expects something like:
-bashexport OCR_HTTP_ENDPOINT="http://localhost:8009"
-Because nv-ingest expects those NIMs to be running as servers on your machine, not as cloud API calls.
+You’re asking a good and simple question, so I’ll keep this simple and direct:
+Short answer
+Claude is partly right, but too absolute.
+What Claude got right
 
-What the GitHub Repo Actually Shows
-When you look at https://github.com/NVIDIA/NeMo-Retriever/blob/release/25.9.0/README.md, the architecture diagram shows:
-Your pipeline.py
-      ↓
-nv-ingest pipeline (library mode)
-      ↓
-calls localhost:8009  → PaddleOCR NIM (running locally)
-calls localhost:8000  → YOLOX page-elements NIM (running locally)  
-calls localhost:8004  → YOLOX graphic-elements NIM (running locally)
-calls localhost:8007  → YOLOX table-structure NIM (running locally)
-Every one of those services must be downloaded and running on your machine before your pipeline.py can use them.
+If you run the repo’s self-hosted stack with docker compose up, Docker will pull the container images from NVIDIA’s registry (after docker login nvcr.io and setting the right keys) and then start the NIM services locally. The self-hosted quickstart explicitly says to clone the repo, log in to NGC, set NGC_API_KEY / NIM_NGC_API_KEY, and start with docker compose up (or docker compose --profile retrieval up). It also warns that the first startup can take 10–15 minutes to pull and fully load models. [docs.nvidia.com]
+You do not manually download model weights one by one in the normal Docker Compose flow; the containers and model assets are fetched as part of the deployment flow using your NVIDIA/NGC keys. The object-detection and OCR “getting started” docs both say you export an NGC key and the container uses it to download the required models/resources. [docs.nvidia.com], [github.com]
 
-What Your Lead Means by "Custom Functions from the Repo"
-Your lead is saying this:
-Inside the repo there are files like:
-src/nv_ingest/stages/extractors/
-src/nv_ingest/stages/nim/
-These files contain the actual code that calls OCR, page-elements, graphic-elements, table-structure NIMs. Your lead wants you to look at how those functions call the NIMs and either:
+What Claude got wrong / overstated
 
-Run those NIMs locally so the existing code works, OR
-Understand the calling pattern and wire it into your pipeline
+It is not true that “nv-ingest library mode only works with localhost and cloud endpoints don’t work.” The NeMo Retriever docs for library mode explicitly say you can integrate with Nemotron RAG models locally or via NIM endpoints, and the repo’s nemo_retriever README says the two inference options are:
 
-She already ran this successfully. What she ran was the full stack — NIMs running locally + pipeline.py connecting to them.
-
-The Two Ways to Run These NIMs Locally
-Option A — Docker (The Standard Way)
-Each NIM is a Docker container. You pull and run each one:
-bash# OCR NIM
-docker run --gpus all -p 8009:8000 \
-  -e NGC_API_KEY=$NVIDIA_API_KEY \
-  nvcr.io/nvidia/nv-ingest/paddle-ocr:25.9.0
-
-# Page elements NIM  
-docker run --gpus all -p 8000:8000 \
-  -e NGC_API_KEY=$NVIDIA_API_KEY \
-  nvcr.io/nvidia/nv-ingest/nv-yolox-page-elements-v1:25.9.0
-
-# Graphic elements NIM
-docker run --gpus all -p 8004:8000 \
-  -e NGC_API_KEY=$NVIDIA_API_KEY \
-  nvcr.io/nvidia/nv-ingest/nv-yolox-graphic-elements-v1:25.9.0
-
-# Table structure NIM
-docker run --gpus all -p 8007:8000 \
-  -e NGC_API_KEY=$NVIDIA_API_KEY \
-  nvcr.io/nvidia/nv-ingest/nv-yolox-table-structure-v1:25.9.0
-Then your bash exports become:
-bashexport OCR_HTTP_ENDPOINT="http://localhost:8009"
-export YOLOX_HTTP_ENDPOINT="http://localhost:8000"
-export YOLOX_GRAPHIC_ELEMENTS_HTTP_ENDPOINT="http://localhost:8004"
-export YOLOX_TABLE_STRUCTURE_HTTP_ENDPOINT="http://localhost:8007"
-export OCR_INFER_PROTOCOL="http"
-export YOLOX_INFER_PROTOCOL="http"
-export YOLOX_GRAPHIC_ELEMENTS_INFER_PROTOCOL="http"
-export YOLOX_TABLE_STRUCTURE_INFER_PROTOCOL="http"
-Option B — Docker Compose (What the Repo Uses)
-The repo has a docker-compose.yaml file that starts ALL services together including all NIMs. This is the cleanest way. From the repo root:
-bashdocker compose up
-That starts everything — pipeline service + all NIM containers + all ports configured correctly.
-
-Why build.nvidia.com API Calls Don't Work Here
-build.nvidia.com gives you REST API access for prototyping single calls. For example you can send one image and get OCR back.
-But nv-ingest library mode internally sends many small requests to these NIMs during pipeline processing — one per page, one per detected region, etc. It expects a low-latency local server, not a cloud API with authentication headers and rate limits on every call.
-The pipeline was designed for local NIM servers. That is why your cloud endpoint exports were silently ignored.
-
-What Actually Happened When Your Lead Ran It
-Your lead ran either:
-
-docker compose up from the repo — which started all NIM containers locally, then ran pipeline.py against localhost ports, OR
-Had access to a server where those NIM containers were already running
-
-She did NOT use build.nvidia.com API endpoints inside the pipeline.
-
-What You Need to Do Now — Clear Steps
-Step 1 — Check if Docker is available on your machine:
-bashdocker --version
-docker compose version
-Step 2 — Check if you have GPU and enough VRAM:
-Each NIM needs GPU. Rough requirements:
-
-PaddleOCR: ~2GB VRAM
-YOLOX page-elements: ~2GB VRAM
-YOLOX graphic-elements: ~2GB VRAM
-YOLOX table-structure: ~2GB VRAM
-
-bashnvidia-smi
-Step 3 — Clone the repo if you haven't:
-bashgit clone -b release/25.9.0 https://github.com/NVIDIA/NeMo-Retriever.git
-cd NeMo-Retriever
-Step 4 — Check the docker-compose file:
-bashcat docker-compose.yaml
-Look for the NIM service definitions and what ports they use.
-Step 5 — Start everything:
-bashexport NVIDIA_API_KEY="nvapi-yourkey"
-docker compose up
-Step 6 — Then in a separate terminal run your pipeline.py with localhost endpoint exports.
-
-Summary in Simple Words
-Your pipeline.py code is fine. Your extraction settings are fine. The only missing piece is that the 4 Nemotron NIM models must be running as local Docker containers on specific ports before your pipeline starts. Without those containers running, the pipeline silently falls back to basic text-only extraction. That is why you get output but no real image/chart/table extraction.
-Your lead ran the full docker compose stack. That is what you need to replicate.so that means when i will be in github repo and i will do docker compose up the nemotron modesl will start?or should i download the models and steup that with the gpu then do the docker compose up?
-so the repo was pushed and it is 25.9.0 version whcich is older version
-so by cloning and them and running the docker compose up that means the models will start locally ?i was not getting this casue those models and ports already in coantainer those containers will be not available in my laptop right?
-how does those container will start and how does  i can run them?8:08 AMGreat question. Let me explain this clearly.
-
-How Docker + NIM Works — Simple Explanation
-When you run docker compose up, Docker does this automatically:
-docker compose up
-      ↓
-reads docker-compose.yaml
-      ↓
-sees "I need nvcr.io/nvidia/paddle-ocr:25.9.0"
-      ↓
-checks if image exists locally → NO
-      ↓
-automatically PULLS (downloads) from NVIDIA's container registry
-      ↓
-starts the container with GPU access
-      ↓
-model is now running on localhost:8009
-You do NOT manually download models. Docker pulls everything automatically using your NVIDIA API key to authenticate.
-
-But Here Is The Honest Problem For You
-These containers are very large and need serious hardware.
-NIM ContainerSizeVRAM NeededPaddleOCR~8GB download4GB VRAMYOLOX page-elements~6GB download4GB VRAMYOLOX graphic-elements~6GB download4GB VRAMYOLOX table-structure~6GB download4GB VRAMnv-ingest itself~15GB download-
-Total: ~40GB+ download, needs 16GB+ VRAM minimum
-This will NOT run on a normal laptop. It needs a proper GPU server.
-
-So Ask Your Lead These 3 Questions Right Now
-This is the most important thing you can do:
-Question 1:
-
-"When you ran the pipeline successfully, were you running on a GPU server or your laptop?"
-
-Question 2:
-
-"Do we have a shared GPU server I can SSH into where the NIM containers are already running?"
-
-Question 3:
-
-"Can you share the exact docker-compose command or environment setup you used?"
+run Nemotron RAG models on your local GPU(s), or
+make over-the-network inference calls to build.nvidia.com hosted or locally deployed NeMo Retriever NIM endpoints. [docs.nvidia.com], [build.nvidia.com], [build.nvidia.com]
 
 
-The Three Realistic Scenarios
-Scenario A — You have a GPU server available
-bash# SSH into server
-ssh user@your-gpu-server
 
-# Clone repo
-git clone -b release/25.9.0 https://github.com/NVIDIA/NeMo-Retriever.git
-cd NeMo-Retriever
+So the correct statement is:
 
-# Set key (needed to pull containers from NVIDIA registry)
-export NVIDIA_API_KEY="nvapi-yourkey"
-export NGC_API_KEY="nvapi-yourkey"  # same key, different variable name
-
-# Pull and start everything
-docker compose up
-# This will take 30-60 minutes first time (downloading ~40GB)
-Scenario B — NIMs already running on a shared server
-Your lead may have already started the NIM containers on a team server. In this case you just point your localhost exports to that server's IP:
-bashexport OCR_HTTP_ENDPOINT="http://TEAM_SERVER_IP:8009"
-export YOLOX_HTTP_ENDPOINT="http://TEAM_SERVER_IP:8000"
-export YOLOX_GRAPHIC_ELEMENTS_HTTP_ENDPOINT="http://TEAM_SERVER_IP:8004"
-export YOLOX_TABLE_STRUCTURE_HTTP_ENDPOINT="http://TEAM_SERVER_IP:8007"
-Scenario C — You only have a laptop
-You cannot run the full stack locally. You need cloud GPU access like:
-
-AWS EC2 with A100/H100
-Google Cloud with A100
-NVIDIA LaunchPad (free access sometimes available)
+docker compose up is the standard way to start the full self-hosted local stack, but library mode can also call hosted or other deployed NIM endpoints if the version/output schemas match. [docs.nvidia.com], [build.nvidia.com], [docs.nvidia.com]
 
 
-What the Repo Clone Actually Contains
-When you clone the repo, you get:
-NeMo-Retriever/
-├── docker-compose.yaml        ← defines all NIM containers + ports
-├── docker-compose.override.yaml
-├── src/
-│   └── nv_ingest/
-│       └── stages/
-│           ├── nim/           ← code that CALLS the NIM containers
-│           └── extractors/    ← extraction logic
-├── examples/
-│   └── pipeline.py            ← similar to your pipeline.py
-└── README.md
-The repo contains the code that calls the NIMs, not the NIMs themselves. The NIMs are pulled as Docker containers from nvcr.io (NVIDIA's container registry) when you run docker compose up.
+So, if you clone the repo and run docker compose up, will the models start locally?
+Yes — if these conditions are met
+
+You are on a machine/server with Docker + Docker Compose installed. [docs.nvidia.com]
+You have a valid NVIDIA/NGC API key and have authenticated to nvcr.io. The self-hosted guide explicitly requires docker login nvcr.io and a .env containing NGC_API_KEY / NIM_NGC_API_KEY. [docs.nvidia.com]
+You have a supported GPU and enough disk space for the core features. The current support matrix says the core extraction features (page-elements-v3, table-structure-v1, graphic-elements-v1, nemotron-ocr-v1, embedding, retrieval) run on a single A10G or better GPU, and the total disk requirement for core features is about ~150GB. [org.ngc.nvidia.com]
+But for the older 25.9.0 release, the release notes explicitly say A10G and L40S were not supported in that release. So for 25.9.0 specifically, you should not assume an A10G/L40S setup is valid even though the latest docs support A10G/L40S for newer releases. [docs.nvidia.com], [org.ngc.nvidia.com]
+
+So the honest practical answer is:
+
+Yes, docker compose up starts the local NIM services — but only on a machine with the right Docker/GPU environment and access to NVIDIA’s container registry. [docs.nvidia.com], [docs.nvidia.com]
+
+
+Do the containers exist on your laptop by default?
+No
+If you clone the repo, you only get:
+
+the code
+the docker-compose.yaml
+the client/service logic
+
+You do not get the NIM containers preinstalled. The containers are pulled from NVIDIA’s registry when you run docker compose up (or docker compose pull) after authenticating. The self-hosted docs describe exactly that startup flow. [docs.nvidia.com], [docs.nvidia.com]
+So your understanding here is right:
+
+The repo contains the orchestration/configuration, not the full models already sitting on your laptop.
+Docker downloads the images when you start the stack. [docs.nvidia.com], [docs.nvidia.com]
+
+
+Do you need to “download the models and set them up with the GPU” manually before docker compose up?
+Usually no — not manually
+In the normal Docker Compose path:
+
+you clone the repo,
+log in to nvcr.io,
+set the .env / shell variables,
+run docker compose up,
+Docker pulls the images,
+the containers fetch their model assets as needed. [docs.nvidia.com], [docs.nvidia.com], [github.com]
+
+So you do not separately pre-download each model the way you would with raw Hugging Face weights.
+
+How much GPU / RAM / disk do you need?
+The safest official answer
+For the current NeMo Retriever support matrix, the core features — including:
+
+nemotron-page-elements-v3
+nemotron-table-structure-v1
+nemotron-graphic-elements-v1
+nemotron-ocr-v1
+embedding / retrieval
+
+run on a single A10G or better GPU, and the docs show about ~150GB disk space for core features. The matrix also lists GPU memory examples such as A10G 24GB, L40S 48GB, A100 40/80GB, H100 80GB, etc. [org.ngc.nvidia.com]
+But for 25.9.0 specifically
+The 25.9.0 release notes say A10G and L40S were not supported in that release. [docs.nvidia.com]
+So for your exact version (25.9.0), the safest assumption is:
+
+use a bigger, officially supported GPU server rather than trying to make it work on a modest laptop/workstation,
+and budget for ~150GB disk for the core stack. [docs.nvidia.com], [org.ngc.nvidia.com]
+
+Important note
+I would not trust the exact per-container VRAM numbers Claude gave you (2GB / 4GB per model) because I do not have official NVIDIA documentation supporting those exact figures. The official docs give system-level requirements, not those exact container-by-container numbers. [org.ngc.nvidia.com], [docs.nvidia.com]
+
+How should you prepare before you get a costly GPU server?
+This is the part that matters for saving money.
+Do these things before you start billable GPU time
+1) On your normal machine, prepare the repo and config
+Shellgit clone -b release/25.9.0 https://github.com/NVIDIA/NeMo-Retriever.gitcd NeMo-Retriever``Show more lines
+The self-hosted docs explicitly start with cloning the repo and changing into it. [docs.nvidia.com]
+2) Read the compose file and env expectations
+Open:
+
+docker-compose.yaml
+.env / example env files if present
+
+The self-hosted docs say to create a .env containing at least:
+
+NGC_API_KEY
+NIM_NGC_API_KEY [docs.nvidia.com]
+
+3) Prepare your API key usage
+Do not paste keys into random scripts.
+Use shell env vars or .env on the server. NVIDIA docs explicitly show exporting the key and using it for docker login nvcr.io. [docs.nvidia.com], [docs.nvidia.com]
+4) Ask your lead / infra team these exact questions
+Because you are right that learning on paid GPU time is expensive.
+Ask:
+
+Which exact GPU SKU did you use for 25.9.0?
+Did you use the repo’s docker compose up or a pre-existing shared server?
+Do we already have a shared machine where the NIM containers are running?
+Which .env values / profiles did you use?
+
+This is especially important because 25.9.0 has older support/known-issue constraints. [docs.nvidia.com], [docs.nvidia.com]
+
+What I recommend you actually do on the GPU server
+Once you get access to the GPU machine:
+Step-by-step
+1) SSH in and verify Docker + GPU
+Shelldocker --versiondocker compose versionnvidia-smiShow more lines
+The self-hosted path requires Docker/Compose and a supported NVIDIA GPU environment. [docs.nvidia.com], [docs.nvidia.com]
+2) Clone the repo
+Shellgit clone -b release/25.9.0 https://github.com/NVIDIA/NeMo-Retriever.gitcd NeMo-RetrieverShow more lines
+ [docs.nvidia.com]
+3) Set your keys
+Shellexport NGC_API_KEY="YOUR_KEY"export NIM_NGC_API_KEY="$NGC_API_KEY"``Show more lines
+That’s the pattern the self-hosted docs describe. [docs.nvidia.com]
+4) Log in to NVIDIA’s registry
+Shellecho "$NGC_API_KEY" | docker login nvcr.io --username '$oauthtoken' --password-stdin``Show more lines
+This is required to pull the containers. [docs.nvidia.com], [docs.nvidia.com]
+5) Optionally pre-pull images
+If you want to reduce uncertainty during billable time, you can do:
+Shelldocker compose pullShow more lines
+This is a good practical preparation step because the docs say first startup can spend 10–15 minutes pulling/loading models. [docs.nvidia.com]
+6) Start the stack
+For default LanceDB/in-process storage:
+Shelldocker compose upShow more lines
+If you need Milvus/retrieval profile:
+Shelldocker compose --profile retrieval upShow more lines
+Those are the official self-hosted startup patterns. [docs.nvidia.com]
+
+One very important correction to keep in mind
+Because you were testing hosted endpoints earlier:
+Your issue was not simply “cloud endpoints never work”
+That statement is too strong. The NeMo Retriever docs and repo README indicate that network-hosted NIM endpoints are supported in some library-mode scenarios, and the docs explicitly mention cloud-based inference for nemotron-parse. [build.nvidia.com], [docs.nvidia.com], [docs.nvidia.com]
+However, for your actual 25.9.0 pipeline + specific endpoints, you hit a concrete incompatibility on page-elements-v3 ('paragraph'), so self-hosted compose with a version-matched backend is the safer path for reproducing the README architecture. [docs.nvidia.com], [github.com]
+So Claude’s “must be localhost” is too absolute, but for your practical goal of matching the README architecture exactly, local Docker Compose is the best route. [docs.nvidia.com], [build.nvidia.com]
+
+My honest recommendation
+If you want the closest possible match to what the 25.9.0 README architecture is claiming:
+Use a GPU server + clone the release/25.9.0 repo + docker compose up
+That is the cleanest way to reproduce the architecture as intended. The self-hosted docs are built around that model. [docs.nvidia.com], [github.com]
+If you only have a normal laptop
+Then do not expect to run the full self-hosted stack reliably. The official docs point to a real GPU-backed deployment, and the support matrix/disk requirements are not laptop-friendly for the full extraction stack. [org.ngc.nvidia.com], [docs.nvidia.com]
+
+Final answer in one line
+Yes:
+If you clone the 25.9.0 repo and run docker compose up on a supported GPU machine with Docker and NVIDIA registry access configured, the local NIM services are supposed to start by pulling the required containers and models. [docs.nvidia.com], [docs.nvidia.com]
+No:
+You do not need to manually download every model first — Docker/NGC handles that as part of the startup flow. [docs.nvidia.com], [docs.nvidia.com]
