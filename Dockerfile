@@ -625,20 +625,3 @@ if __name__ == "__main__":
         log.error(f"FATAL ERROR: {e}")
         log.error(traceback.format_exc())
         sys.exit(1)
-
-
-
-
-
-
-
-
-        Hi Sneha,
-
-I just wanted to check regarding the internship conversion process. Since next Thursday is the last day of my internship, I understand that the full-time conversion will be based on our performance and feedback from the mentors, as mentioned by our manager.
-
-I heard that some leads have already shared positive feedback for their interns, so I wanted to ask if you could also share your feedback and rating on my performance. It would really help me understand where I stand, especially since I don’t have a backup plan at the moment.
-
-Please let me know honestly if I have performed well or if there are areas where I need improvement. If there’s anything I should work on, I’m ready to put in extra effort and improve my technical skills.
-
-Thank you for your guidance and support.
