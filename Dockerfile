@@ -1,294 +1,189 @@
-taskset -c 0-7 python vlm_nvingest.py
-2026-04-16 05:47:42.102812902 [W:onnxruntime:Default, device_discovery.cc:132 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename ""5620e0c7-8062-4dce-aeb7-520c7ef76171"" dit not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+
-INFO:nv_ingest_api.util.system.hardware_info:Detected 32 logical cores via psutil.
-INFO:nv_ingest_api.util.system.hardware_info:Detected 16 physical cores via psutil.
-INFO:nv_ingest_api.util.system.hardware_info:Detected 8 cores via os.sched_getaffinity.
-INFO:nv_ingest_api.util.system.hardware_info:Raw CPU limit determined: 8.00 (Method: sched_affinity)
-INFO:nv_ingest_api.util.system.hardware_info:Effective CPU core limit determined: 8.00 (Method: sched_affinity)
-Starting nv-ingest pipeline...
-INFO:nv_ingest.framework.orchestration.ray.util.pipeline.pipeline_runners:Launching pipeline in Python subprocess using multiprocessing.
-INFO:nv_ingest.framework.orchestration.ray.util.pipeline.pipeline_runners:Pipeline subprocess started (PID=52562)
-Pipeline ready.
+import logging, os, time
 
-=== STEP 1: Extracting document ===
-Processing:   0%|                                                                       | 0/1 [00:00<?, ?doc/s]INFO:nv_ingest_client.client.client:Starting batch processing for 1 jobs with batch size 32.
-Processing: 100%|███████████████████████████████████████████████████████████████| 1/1 [00:31<00:00, 31.11s/doc]INFO:nv_ingest_client.client.client:Batch processing finished. Success: 1, Failures: 0. Total accounted for: 1/1
-Processing: 100%|███████████████████████████████████████████████████████████████| 1/1 [00:31<00:00, 31.11s/doc]
-Extracted 1 result(s).
-
-=== STEP 2: VLM captioning all visuals ===
-  VLM [image] page 0 ... INFO:httpx:HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
-✓
-Total chunks after VLM pass: 1
-
-=== STEP 3: Embedding & uploading to Milvus ===
-INFO:httpx:HTTP Request: POST https://integrate.api.nvidia.com/v1/embeddings "HTTP/1.1 400 Bad Request"
-Traceback (most recent call last):
-  File "/home/clouduser01/jaswanth/vlm_nvingest.py", line 161, in <module>
-    vecs    = embed_texts(texts)
-              ^^^^^^^^^^^^^^^^^^
-  File "/home/clouduser01/jaswanth/vlm_nvingest.py", line 50, in embed_texts
-    resp = nvidia.embeddings.create(model=EMBED_MODEL, input=texts, encoding_format="float")
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages/openai/resources/embeddings.py", line 136, in create
-    return self._post(
-           ^^^^^^^^^^^
-  File "/home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages/openai/_base_client.py", line 1297, in post
-    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
-                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages/openai/_base_client.py", line 1070, in request
-    raise self._make_status_error_from_response(err.response) from None
-openai.BadRequestError: Error code: 400 - {'error': "'input_type' parameter is required for asymmetric models"}
-Killed subprocess group 52562
-E20260416 05:48:52.168097 59144 server.cpp:47] [SERVER][BlockLock][milvus] Process exit
-^C
-(myenv) clouduser01@AZRCIDEVNIVIDIA:~/jaswanth$ 
-
-
-
-
-
-
-
-
-import json, os, time, textwrap
 import pymilvus
 pymilvus.connections.disconnect("default")
 
 from nv_ingest.framework.orchestration.ray.util.pipeline.pipeline_runners import (
-    run_pipeline, PipelineCreationSchema
+    run_pipeline,
+    PipelineCreationSchema
 )
 from nv_ingest_client.client import Ingestor, NvIngestClient
 from nv_ingest_api.util.message_brokers.simple_message_broker import SimpleClient
-from openai import OpenAI
-from pymilvus import MilvusClient, DataType
+from nv_ingest_client.util.process_json_files import ingest_json_results_to_blob
 
-# ─── CONFIG ───────────────────────────────────────────────────────────────────
-assert "NVIDIA_API_KEY" in os.environ, "export NVIDIA_API_KEY=..."
+# ------------ CONFIG ------------
+assert "NVIDIA_API_KEY" in os.environ, "Set env: export NVIDIA_API_KEY=..."
 NVIDIA_API_KEY = os.environ["NVIDIA_API_KEY"]
 
-PDF_PATH       = "Docs/Ascent_of_Open.pdf"
-MILVUS_URI     = "milvus.db"
-COLLECTION     = "multimodal_docs"
-VLM_MODEL      = "nvidia/llama-3.1-nemotron-nano-vl-8b-v1"
-EMBED_MODEL    = "nvidia/nv-embedqa-e5-v5"
-DENSE_DIM      = 1024
-CHUNK_SIZE     = 512          # characters per text chunk
-CHUNK_OVERLAP  = 80           # overlap between consecutive chunks
-EMBED_BATCH    = 16           # safe batch size for NVIDIA embed API
+# ------------ START PIPELINE ------------
+config = PipelineCreationSchema()
 
-VISUAL_TYPES   = {"image", "structured", "infographic"}
-
-VLM_PROMPT = (
-    "You are processing a document visual for a retrieval system. "
-    "Describe EVERYTHING visible: all text, numbers, labels, legends, axes, "
-    "data values, titles, and relationships. Be thorough — this description "
-    "is the only way this content will be searchable."
-)
-
-# ─── CLIENTS ──────────────────────────────────────────────────────────────────
-nvidia = OpenAI(
-    base_url="https://integrate.api.nvidia.com/v1",
-    api_key=NVIDIA_API_KEY,
-)
-
-# ─── HELPERS ──────────────────────────────────────────────────────────────────
-def chunk_text(text: str, size: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP) -> list[str]:
-    """Split text into overlapping character-window chunks."""
-    if len(text) <= size:
-        return [text]
-    chunks, start = [], 0
-    while start < len(text):
-        end = start + size
-        chunks.append(text[start:end])
-        start += size - overlap
-    return chunks
-
-
-def vlm_caption(b64: str) -> str:
-    """Send any visual as base64 PNG → VLM descriptive text."""
-    resp = nvidia.chat.completions.create(
-        model=VLM_MODEL,
-        messages=[{"role": "user", "content": [
-            {"type": "image_url",
-             "image_url": {"url": f"data:image/png;base64,{b64}"}},
-            {"type": "text", "text": VLM_PROMPT},
-        ]}],
-        max_tokens=768,
-    )
-    return resp.choices[0].message.content.strip()
-
-
-def embed_texts(texts: list[str], input_type: str = "passage") -> list[list[float]]:
-    """Embed a batch of strings.  input_type = 'passage' | 'query'"""
-    resp = nvidia.embeddings.create(
-        model=EMBED_MODEL,
-        input=texts,
-        encoding_format="float",
-        extra_body={"input_type": input_type, "truncate": "END"},
-    )
-    return [r.embedding for r in resp.data]
-
-
-def setup_collection(uri: str, name: str, dim: int) -> MilvusClient:
-    mc = MilvusClient(uri)
-    if mc.has_collection(name):
-        mc.drop_collection(name)
-    schema = mc.create_schema(auto_id=True, enable_dynamic_field=True)
-    schema.add_field("id",        DataType.INT64,        is_primary=True)
-    schema.add_field("embedding", DataType.FLOAT_VECTOR, dim=dim)
-    schema.add_field("text",      DataType.VARCHAR,      max_length=65535)
-    schema.add_field("source",    DataType.VARCHAR,      max_length=512)
-    idx = mc.prepare_index_params()
-    idx.add_index("embedding", index_type="FLAT", metric_type="IP")
-    mc.create_collection(name, schema=schema, index_params=idx)
-    return mc
-
-# ─── PIPELINE ─────────────────────────────────────────────────────────────────
-print("Starting nv-ingest pipeline...")
 run_pipeline(
-    PipelineCreationSchema(),
+    config,
     block=False,
     disable_dynamic_scaling=True,
-    run_in_subprocess=True,
+    run_in_subprocess=True
 )
-time.sleep(15)
-print("Pipeline ready.\n")
 
-nv_client = NvIngestClient(
+print("Waiting for pipeline to initialize...")
+time.sleep(15)
+print("Pipeline ready. Connecting client...")
+
+client = NvIngestClient(
     message_client_allocator=SimpleClient,
     message_client_port=7671,
-    message_client_hostname="localhost",
+    message_client_hostname="localhost"
 )
 
-# ─── STEP 1: EXTRACT ──────────────────────────────────────────────────────────
-print("=== STEP 1: Extracting document ===")
-results, failures = (
-    Ingestor(client=nv_client)
-    .files(PDF_PATH)
+milvus_uri = "milvus.db"
+collection_name = "multimodal_docs"
+sparse = False
+
+# =========================================================================
+#  STEP 1: Basic text extraction (sanity check)
+# =========================================================================
+print("\n=== STEP 1: Basic text extraction ===")
+
+ingestor = (
+    Ingestor(client=client)
+    .files("Docs/Ascent_of_Open.pdf")
     .extract(
         extract_text=True,
-        extract_tables=True,
-        extract_charts=True,
-        extract_images=True,
-        extract_infographics=True,
-        table_output_format="markdown",
+        extract_tables=False,
+        extract_charts=False,
+        extract_images=False,
+        extract_infographics=False,
         text_depth="page",
     )
-    .ingest(show_progress=True, return_failures=True)
 )
 
+print("Starting ingestion...")
+t0 = time.time()
+results, failures = ingestor.ingest(show_progress=True, return_failures=True)
+t1 = time.time()
+print(f"Total time: {t1 - t0:.2f} seconds")
+print(f"\nResults:  {len(results)}")
+print(f"Failures: {len(failures)}")
+
 if failures:
-    print(f"[!] {len(failures)} extraction failure(s):")
-    for f in failures:
-        print(f"  {f}")
-    raise SystemExit(1)
+    print("\n=== STEP 1 FAILURES ===")
+    for i, f in enumerate(failures):
+        print(f"--- [{i}] ---\n{f}")
+    print("\nFix Step 1 before proceeding.")
 
-print(f"Extracted {len(results)} result(s).")
+elif results:
+    print("\n=== STEP 1 SUCCEEDED ===")
+    blob = ingest_json_results_to_blob(results[0])
+    print(blob[:500] + "..." if len(blob) > 500 else blob)
 
-# ─── STEP 2: CHUNK TEXT  +  VLM-CAPTION VISUALS ───────────────────────────────
-print("\n=== STEP 2: Chunking text  +  VLM captioning visuals ===")
+    # =========================================================================
+    #  STEP 2: Full extraction + split + caption + embed + vdb upload
+    # =========================================================================
+    print("\n=== STEP 2: Full pipeline (extract + split + caption + embed + vdb) ===")
 
-chunks: list[dict] = []   # {"text": ..., "source": ...}
-
-for raw in results:
-    docs = json.loads(raw) if isinstance(raw, str) else raw
-    if not isinstance(docs, list):
-        docs = [docs]
-
-    for doc in docs:
-        meta   = doc.get("metadata", {})
-        cmeta  = meta.get("content_metadata", {})
-        ctype  = cmeta.get("type", "").lower()
-        page   = cmeta.get("page_number", 0)
-        source = f"{os.path.basename(PDF_PATH)}::p{page}::{ctype}"
-        content = meta.get("content", "")
-        if not content:
-            continue
-
-        if ctype == "text":
-            # ── split long pages into overlapping chunks ──────────────────
-            for i, piece in enumerate(chunk_text(content.strip())):
-                chunks.append({"text": piece, "source": f"{source}::c{i}"})
-
-        elif ctype in VISUAL_TYPES:
-            # ── all visuals (image / chart / table / infographic) → VLM ──
-            print(f"  VLM [{ctype}] page {page} ...", end=" ", flush=True)
-            try:
-                caption = vlm_caption(content)
-                # VLM output can be long too — chunk it as well
-                for i, piece in enumerate(chunk_text(caption)):
-                    chunks.append({
-                        "text": f"[{ctype.upper()} p{page}]: {piece}",
-                        "source": f"{source}::c{i}",
-                    })
-                print("✓")
-            except Exception as e:
-                print(f"✗  {e}")
-
-print(f"\nTotal chunks ready for embedding: {len(chunks)}")
-
-# ─── STEP 3: EMBED + VDB ──────────────────────────────────────────────────────
-print("\n=== STEP 3: Embedding & uploading to Milvus ===")
-
-mc = setup_collection(MILVUS_URI, COLLECTION, DENSE_DIM)
-inserted = 0
-
-for i in range(0, len(chunks), EMBED_BATCH):
-    batch   = chunks[i : i + EMBED_BATCH]
-    texts   = [c["text"]   for c in batch]
-    sources = [c["source"] for c in batch]
-
-    try:
-        vecs = embed_texts(texts, input_type="passage")
-    except Exception as e:
-        print(f"  [!] embed error at batch {i}: {e} — skipping")
-        continue
-
-    mc.insert(COLLECTION, [
-        {"embedding": v, "text": t, "source": s}
-        for v, t, s in zip(vecs, texts, sources)
-    ])
-    inserted += len(batch)
-    print(f"  inserted {inserted}/{len(chunks)}")
-
-mc.flush(COLLECTION)
-print(f"\n✓ {inserted} chunks stored in '{COLLECTION}' → {MILVUS_URI}")
-
-# ─── STEP 4: RETRIEVAL TEST ───────────────────────────────────────────────────
-print("\n=== STEP 4: Test retrieval + RAG ===")
-
-queries = [
-    "Why did economics and physics become early movers in open access adoption?",
-    "How did arXiv influence scholarly communication in physics?",
-    "What does the report mean by successive waves of innovation in open access?",
-    "How does the report connect open access, open data, and reproducibility?",
-]
-
-def retrieve(q: str, top_k: int = 8) -> str:
-    [qvec] = embed_texts([q], input_type="query")
-    hits   = mc.search(
-        COLLECTION,
-        data=[qvec],
-        anns_field="embedding",
-        limit=top_k,
-        output_fields=["text", "source"],
+    ingestor_full = (
+        Ingestor(client=client)
+        .files("Docs/Ascent_of_Open.pdf")
+        .extract(
+            extract_text=True,
+            extract_tables=True,
+            extract_charts=True,
+            extract_images=True,
+            extract_infographics=True,
+            table_output_format="markdown",
+            text_depth="page",
+        )
+        .split(
+            tokenizer="intfloat/e5-large-unsupervised",
+            chunk_size=512,
+            chunk_overlap=50,
+        )
+        .caption(
+            endpoint_url="https://integrate.api.nvidia.com/v1/chat/completions",
+            model_name="nvidia/llama-3.1-nemotron-nano-vl-8b-v1",
+            api_key=NVIDIA_API_KEY,
+        )
+        .embed()
+        .vdb_upload(
+            collection_name=collection_name,
+            milvus_uri=milvus_uri,
+            sparse=sparse,
+            dense_dim=2048
+        )
     )
-    return "\n\n".join(h["entity"]["text"] for h in hits[0]) if hits else "—"
 
-print("=" * 60)
-for q in queries:
-    ctx = retrieve(q)
-    ans = nvidia.chat.completions.create(
-        model="meta/llama-3.3-70b-instruct",
-        messages=[{"role": "user", "content": (
-            f"Use the context below to answer the question.\n\n"
-            f"Context:\n{ctx}\n\nQuestion: {q}\nAnswer concisely."
-        )}],
-        max_tokens=512,
-        temperature=0.5,
-    )
-    print(f"\nQ: {q}")
-    print(f"A: {ans.choices[0].message.content.strip()}")
-    print("-" * 60)
-    
+    print("Starting full ingestion...")
+    t0 = time.time()
+    results_full, failures_full = ingestor_full.ingest(show_progress=True, return_failures=True)
+    t1 = time.time()
+    print(f"Total time: {t1 - t0:.2f} seconds")
+    print(f"\nResults:  {len(results_full)}")
+    print(f"Failures: {len(failures_full)}")
+
+    if failures_full:
+        print("\n=== STEP 2 FAILURES ===")
+        for i, f in enumerate(failures_full):
+            print(f"--- [{i}] ---\n{f}")
+    else:
+        print("\n=== STEP 2 SUCCEEDED ===")
+        print(f"Embeddings stored in Milvus Lite: {milvus_uri}")
+        print(f"Collection: {collection_name}")
+
+        # =========================================================================
+        #  STEP 3: Retrieval + RAG queries
+        # =========================================================================
+        print("\n=== STEP 3: Querying ingested documents ===")
+
+        from openai import OpenAI
+        from nv_ingest_client.util.milvus import nvingest_retrieval
+
+        queries = [
+            "Why did economics and physics become early movers in open access adoption?",
+            "How did arXiv influence scholarly communication in physics?",
+            "Why did life sciences move more toward open access journals and APC models instead of preprints?",
+            "What does the report mean by saying open access has grown through “successive waves of innovation”?",
+            "How does the report connect open access, open data, and reproducibility?",
+        ]
+
+        llm_client = OpenAI(
+            base_url="https://integrate.api.nvidia.com/v1",
+            api_key=NVIDIA_API_KEY
+        )
+
+        print("=" * 60)
+        for q in queries:
+            retrieved_docs = nvingest_retrieval(
+                [q],
+                collection_name,
+                milvus_uri=milvus_uri,
+                hybrid=sparse,
+                top_k=10,
+            )
+
+            if retrieved_docs and retrieved_docs[0]:
+                context = "\n\n".join([doc["entity"]["text"] for doc in retrieved_docs[0]])
+            else:
+                context = "No relevant content found."
+
+            prompt = f"""Use the following context to answer the question.
+If the answer is not in the context, say so.
+
+Context:
+{context}
+
+Question: {q}
+Answer:"""
+
+            completion = llm_client.chat.completions.create(
+                model="meta/llama-3.3-70b-instruct",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=1024,
+                temperature=0.7,
+            )
+
+            print(f"\nQ: {q}")
+            print(f"A: {completion.choices[0].message.content}")
+            print("-" * 60)
+
+else:
+    print("\nNo results and no failures — unexpected state.")
