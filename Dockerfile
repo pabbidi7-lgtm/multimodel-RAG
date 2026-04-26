@@ -1,519 +1,613 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>LangGraph Agentic Workflow — Binary Decision Tree</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    background: #0d0d0d;
-    color: #e8e8e8;
-    font-family: 'Courier New', 'Consolas', monospace;
-    padding: 40px 32px;
-    min-height: 100vh;
-  }
+"""
+NV-Ingest 25.9.0 — Library Mode Pipeline
+Full Logging + Timing + Latency Tracking + 100-PDF Batch Support
+Target: A100 GPU with all Nemotron NIMs running via docker compose
 
-  .header {
-    border: 1px solid #333;
-    border-bottom: 2px solid #555;
-    padding: 14px 20px;
-    margin-bottom: 36px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  .header-title { font-size: 13px; letter-spacing: 0.1em; color: #fff; font-weight: bold; }
-  .header-sub { font-size: 11px; letter-spacing: 0.06em; color: #666; }
+Author : Your Team
+Version: 25.9.0
+"""
 
-  .legend {
-    display: flex; gap: 28px; margin-bottom: 32px; padding: 0 4px;
-  }
-  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #888; letter-spacing: 0.05em; }
-  .leg-line { width: 32px; height: 1px; }
-  .leg-solid { background: #ccc; }
-  .leg-thin { background: #555; }
-  .leg-dash { background: none; border-top: 1px dashed #e8a020; }
+import logging
+import os
+import sys
+import time
+import json
+import glob
+import traceback
+from datetime import datetime
+from pathlib import Path
 
-  .tree-wrap {
-    display: flex;
-    gap: 0;
-  }
+import pymilvus
+pymilvus.connections.disconnect("default")
 
-  .left-bypass {
-    width: 80px;
-    flex-shrink: 0;
-    position: relative;
-  }
+from nv_ingest.framework.orchestration.ray.util.pipeline.pipeline_runners import (
+    run_pipeline,
+    PipelineCreationSchema,
+)
+from nv_ingest_client.client import Ingestor, NvIngestClient
+from nv_ingest_api.util.message_brokers.simple_message_broker import SimpleClient
+from nv_ingest_client.util.process_json_files import ingest_json_results_to_blob
 
-  .right-retry {
-    width: 80px;
-    flex-shrink: 0;
-    position: relative;
-  }
+# ─────────────────────────────────────────────────────────────────────────────
+# CONFIGURATION — Edit these values before running
+# ─────────────────────────────────────────────────────────────────────────────
+DOCS_FOLDER        = "Docs"
+# ── MULTI-FORMAT: list all extensions you want to ingest together ────────────
+FILE_PATTERNS      = ["*.pdf", "*.docx", "*.pptx", "*.jpeg", "*.jpg", "*.png"]
+MILVUS_URI         = "milvus.db"
+COLLECTION_NAME    = "multimodal_docs"
+SPARSE             = False
+DENSE_DIM          = 2048
+CHUNK_SIZE         = 512
+CHUNK_OVERLAP      = 50
+TOKENIZER          = "intfloat/e5-large-unsupervised"
+CAPTION_ENDPOINT   = "https://integrate.api.nvidia.com/v1/chat/completions"
+CAPTION_MODEL      = "nvidia/llama-3.1-nemotron-nano-vl-8b-v1"
+LLM_MODEL          = "meta/llama-3.3-70b-instruct"
+LLM_BASE_URL       = "https://integrate.api.nvidia.com/v1"
+PIPELINE_WAIT_SEC  = 20
+RESULTS_DIR        = "Outputs"
+TOP_K              = 10
 
-  .spine {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
+# ─────────────────────────────────────────────────────────────────────────────
+# PREDEFINED QUESTIONS — used when --interactive flag is NOT passed
+# ─────────────────────────────────────────────────────────────────────────────
+DEFAULT_QUESTIONS = [
+    "Why did economics and physics become early movers in open access adoption?",
+    "How did arXiv influence scholarly communication in physics?",
+    "Why did life sciences move more toward open access journals and APC models instead of preprints?",
+    "What does the report mean by saying open access has grown through successive waves of innovation?",
+    "How does the report connect open access, open data, and reproducibility?",
+]
 
-  /* Node */
-  .node-wrap {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    position: relative;
-  }
+# ─────────────────────────────────────────────────────────────────────────────
+# LOGGING SETUP
+# ─────────────────────────────────────────────────────────────────────────────
+Path(RESULTS_DIR).mkdir(parents=True, exist_ok=True)
 
-  .node {
-    width: 340px;
-    border: 1px solid #444;
-    border-top: 2.5px solid #aaa;
-    background: #111;
-  }
+RUN_ID        = datetime.now().strftime("%Y%m%d_%H%M%S")
+LOG_FILE      = os.path.join(RESULTS_DIR, f"pipeline_run_{RUN_ID}.log")
+METRICS_FILE  = os.path.join(RESULTS_DIR, f"metrics_{RUN_ID}.json")
+ANSWERS_FILE  = os.path.join(RESULTS_DIR, f"answers_{RUN_ID}.json")
 
-  .node-head {
-    padding: 9px 16px;
-    border-bottom: 1px solid #2a2a2a;
-    font-size: 12px;
-    font-weight: bold;
-    letter-spacing: 0.06em;
-    color: #fff;
-  }
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s  %(levelname)-8s  %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    handlers=[
+        logging.FileHandler(LOG_FILE, mode="w", encoding="utf-8", delay=False),
+    ],
+)
+log = logging.getLogger("nv_ingest_pipeline")
 
-  .node-body {
-    padding: 8px 16px 10px;
-  }
+def divider(char="═", width=70):
+    log.info(char * width)
 
-  .node-body p {
-    font-size: 11px;
-    color: #888;
-    letter-spacing: 0.03em;
-    line-height: 1.7;
-  }
+def phase_start(name):
+    log.info(f"PHASE START : {name}")
+    return time.perf_counter()
 
-  /* Connectors */
-  .arrow-down {
-    width: 1px;
-    background: #555;
-    height: 32px;
-    position: relative;
-    margin: 0 auto;
-  }
-  .arrow-down::after {
-    content: '';
-    position: absolute;
-    bottom: -5px;
-    left: -4px;
-    border-left: 5px solid transparent;
-    border-right: 5px solid transparent;
-    border-top: 6px solid #555;
-  }
+def phase_end(name, t0):
+    elapsed = time.perf_counter() - t0
+    log.info(f"PHASE END   : {name}  →  {elapsed:.3f}s")
+    return elapsed
 
-  .edge-label {
-    font-size: 10px;
-    color: #666;
-    letter-spacing: 0.05em;
-    margin: 2px 0;
-    text-align: center;
-  }
+# ─────────────────────────────────────────────────────────────────────────────
+# COLLECT QUESTIONS FROM TERMINAL  (called BEFORE pipeline starts)
+# ─────────────────────────────────────────────────────────────────────────────
+def collect_questions():
+    print("\n" + "═" * 70)
+    print("  INTERACTIVE QUESTION MODE")
+    print("  Enter your RAG questions below.")
+    print("  Press Enter on a blank line (or type 'done') when finished.")
+    print("═" * 70 + "\n")
 
-  /* Start / end nodes */
-  .terminal {
-    width: 200px;
-    border: 1px solid #555;
-    padding: 10px 0;
-    text-align: center;
-    font-size: 12px;
-    font-weight: bold;
-    letter-spacing: 0.08em;
-    color: #ccc;
-  }
+    questions = []
+    idx = 1
+    while True:
+        try:
+            q = input(f"  Q{idx}: ").strip()
+        except EOFError:
+            break
+        if q.lower() in ("", "done"):
+            if not questions:
+                print("  [!] Please enter at least one question.")
+                continue
+            break
+        questions.append(q)
+        idx += 1
 
-  /* Bypass lines drawn as SVG overlays */
-  .diagram-container {
-    position: relative;
-  }
+    print(f"\n  {len(questions)} question(s) collected. Starting pipeline...\n")
+    log.info(f"Interactive mode: {len(questions)} question(s) collected from terminal.")
+    for i, q in enumerate(questions, 1):
+        log.info(f"  Q{i}: {q}")
+    return questions
 
-  /* Retry traversal panel */
-  .retry-panel {
-    margin-top: 48px;
-    border: 1px solid #2a2a2a;
-    border-top: 2px solid #e8a020;
-  }
+# ─────────────────────────────────────────────────────────────────────────────
+# ENVIRONMENT CHECK
+# ─────────────────────────────────────────────────────────────────────────────
+def check_environment():
+    divider()
+    log.info("ENVIRONMENT CHECK")
+    divider()
 
-  .retry-header {
-    background: #161616;
-    padding: 10px 18px;
-    font-size: 11px;
-    font-weight: bold;
-    letter-spacing: 0.1em;
-    color: #e8a020;
-    border-bottom: 1px solid #2a2a2a;
-  }
+    assert "NVIDIA_API_KEY" in os.environ, (
+        "NVIDIA_API_KEY not set.  Run: export NVIDIA_API_KEY='nvapi-...'"
+    )
+    NVIDIA_API_KEY = os.environ["NVIDIA_API_KEY"]
+    log.info(f"  NVIDIA_API_KEY        : {'*' * 8}{NVIDIA_API_KEY[-6:]}")
 
-  .retry-nodes {
-    display: flex;
-    align-items: center;
-    padding: 18px 18px 14px;
-    gap: 0;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-  }
+    nim_vars = {
+        "YOLOX_HTTP_ENDPOINT"                    : "page-elements     (port 8000)",
+        "YOLOX_GRAPHIC_ELEMENTS_HTTP_ENDPOINT"   : "graphic-elements  (port 8003)",
+        "YOLOX_TABLE_STRUCTURE_HTTP_ENDPOINT"    : "table-structure   (port 8006)",
+        "OCR_HTTP_ENDPOINT"                      : "ocr               (port 8009)",
+    }
 
-  .r-node {
-    border: 1px solid #444;
-    border-top: 2px solid #aaa;
-    background: #111;
-    min-width: 80px;
-    text-align: center;
-    padding: 8px 10px 10px;
-    flex-shrink: 0;
-  }
-  .r-node.start-node { border-top-color: #e8a020; }
-  .r-node.re-entry { border-top-color: #e8a020; }
+    all_set = True
+    for var, desc in nim_vars.items():
+        val = os.environ.get(var, "")
+        if val:
+            log.info(f"  {var:<45} = {val}")
+        else:
+            log.warning(f"  {var:<45} NOT SET — {desc} will NOT be invoked")
+            all_set = False
 
-  .r-node .rn-label { font-size: 12px; font-weight: bold; color: #fff; letter-spacing: 0.04em; }
-  .r-node .rn-sub   { font-size: 10px; color: #666; margin-top: 3px; letter-spacing: 0.03em; }
+    if not all_set:
+        log.warning("  Some NIM endpoints are missing. Basic extraction only for those paths.")
+    else:
+        log.info("  All 4 Nemotron NIM endpoints are set. Full multimodal extraction enabled.")
 
-  .r-arrow {
-    display: flex; flex-direction: column; align-items: center; padding: 0 6px; flex-shrink: 0;
-  }
-  .r-arrow .ra-line { width: 24px; height: 1px; background: #555; }
-  .r-arrow .ra-dash { width: 24px; height: 1px; background: none; border-top: 1px dashed #e8a020; }
-  .r-arrow .ra-tip  { font-size: 10px; color: #555; margin-left: 14px; line-height: 1; }
-  .r-arrow .ra-tip-orange { color: #e8a020; }
-  .r-arrow .ra-label { font-size: 9px; color: #555; letter-spacing: 0.04em; margin-top: 3px; text-align: center; width: 36px; }
+    return NVIDIA_API_KEY
 
-  .retry-steps {
-    border-top: 1px solid #1e1e1e;
-    padding: 14px 18px;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 6px 32px;
-  }
-  .retry-steps p {
-    font-size: 11px;
-    color: #777;
-    line-height: 1.6;
-    letter-spacing: 0.02em;
-  }
-  .retry-steps p span { color: #bbb; }
+# ─────────────────────────────────────────────────────────────────────────────
+# COLLECT FILES  — multi-format, all extensions in FILE_PATTERNS
+# ─────────────────────────────────────────────────────────────────────────────
+def collect_files():
+    """
+    Scans DOCS_FOLDER for every extension in FILE_PATTERNS and returns a
+    combined sorted list.  All formats are ingested in the same batch run.
 
-  .footer-legend {
-    margin-top: 20px;
-    padding: 12px 18px;
-    border: 1px solid #1e1e1e;
-    display: flex;
-    gap: 32px;
-    flex-wrap: wrap;
-  }
-  .footer-legend p { font-size: 10px; color: #555; letter-spacing: 0.04em; line-height: 1.7; }
+    HOW TO CHANGE FORMATS:
+      Edit FILE_PATTERNS at the top of this file, e.g.:
+        FILE_PATTERNS = ["*.pdf", "*.docx"]          # PDF + Word only
+        FILE_PATTERNS = ["*.pdf", "*.png", "*.jpg"]  # PDF + images
+        FILE_PATTERNS = ["*.pdf"]                     # back to PDF-only
+    """
+    divider()
+    log.info(f"FILE DISCOVERY  →  folder: {DOCS_FOLDER}/")
+    log.info(f"  Formats      : {', '.join(FILE_PATTERNS)}")
 
-  /* The full diagram uses a relative container + absolute SVG for bypass lines */
-  .full-diagram {
-    display: flex;
-    gap: 0;
-    position: relative;
-  }
+    files = []
+    for pattern in FILE_PATTERNS:
+        matched = sorted(glob.glob(os.path.join(DOCS_FOLDER, pattern)))
+        if matched:
+            log.info(f"  {pattern:<12} → {len(matched)} file(s)")
+        files.extend(matched)
 
-  .bypass-col {
-    width: 72px;
-    flex-shrink: 0;
-  }
-  .retry-col {
-    width: 72px;
-    flex-shrink: 0;
-  }
-</style>
-</head>
-<body>
+    # deduplicate (in case overlapping patterns) and sort
+    files = sorted(set(files))
 
-<div class="header">
-  <span class="header-title">LANGGRAPH · AGENTIC RAG · BINARY DECISION TREE</span>
-  <span class="header-sub">5 NODES · 3 BYPASS PATHS · 1 RETRY LOOP</span>
-</div>
+    log.info(f"  ─── Total : {len(files)} file(s) ───")
+    for f in files:
+        size_mb = os.path.getsize(f) / (1024 * 1024)
+        ext = Path(f).suffix.lower()
+        log.info(f"  › [{ext}]  {f}  ({size_mb:.2f} MB)")
 
-<div class="legend">
-  <div class="legend-item">
-    <div class="leg-line leg-solid"></div>
-    <span>happy path (right / down)</span>
-  </div>
-  <div class="legend-item">
-    <div class="leg-line leg-thin"></div>
-    <span>bypass / short-circuit (left)</span>
-  </div>
-  <div class="legend-item">
-    <div class="leg-line leg-dash"></div>
-    <span>retry traversal up-tree (orange)</span>
-  </div>
-</div>
+    if not files:
+        log.error(f"  No files found in '{DOCS_FOLDER}/' matching {FILE_PATTERNS}.")
+        log.error("  Check DOCS_FOLDER and FILE_PATTERNS at the top of the script.")
+        sys.exit(1)
 
-<!-- Main diagram: spine + SVG overlay for bypass and retry lines -->
-<div class="full-diagram">
+    return files
 
-  <!-- Left bypass rail placeholder -->
-  <div class="bypass-col" id="bypassCol"></div>
+# ─────────────────────────────────────────────────────────────────────────────
+# PIPELINE INIT
+# ─────────────────────────────────────────────────────────────────────────────
+def start_pipeline():
+    divider()
+    log.info("PIPELINE INITIALISATION")
+    divider()
+    t0 = phase_start("Pipeline subprocess start")
+    config = PipelineCreationSchema()
+    run_pipeline(
+        config,
+        block=False,
+        disable_dynamic_scaling=True,
+        run_in_subprocess=True,
+    )
+    init_time = phase_end("Pipeline subprocess start", t0)
+    log.info(f"  Waiting {PIPELINE_WAIT_SEC}s for pipeline to become ready...")
+    time.sleep(PIPELINE_WAIT_SEC)
+    log.info("  Pipeline ready.")
 
-  <!-- Center spine -->
-  <div class="spine" id="spine">
+    client = NvIngestClient(
+        message_client_allocator=SimpleClient,
+        message_client_port=7671,
+        message_client_hostname="localhost",
+    )
+    log.info("  NvIngestClient connected  →  localhost:7671")
+    return client, init_time
 
-    <div class="terminal" id="n-start">USER QUERY</div>
+# ─────────────────────────────────────────────────────────────────────────────
+# INGEST ONE FILE  (text-only sanity check)
+# ─────────────────────────────────────────────────────────────────────────────
+def sanity_check(client, filepath):
+    divider()
+    log.info(f"STEP 1 — SANITY CHECK (text-only)  →  {filepath}")
+    divider()
 
-    <div class="arrow-down"></div>
+    t0 = phase_start("Text-only extraction")
+    ingestor = (
+        Ingestor(client=client)
+        .files(filepath)
+        .extract(
+            extract_text=True,
+            extract_tables=False,
+            extract_charts=False,
+            extract_images=False,
+            extract_infographics=False,
+            text_depth="page",
+        )
+    )
+    results, failures = ingestor.ingest(show_progress=True, return_failures=True)
+    sanity_time = phase_end("Text-only extraction", t0)
 
-    <div class="node-wrap" id="nw1">
-      <div class="node" id="n1">
-        <div class="node-head">N1 &mdash; GUARDRAIL</div>
-        <div class="node-body">
-          <p>Injection check &middot; filler-word strip</p>
-          <p>Intent label: text / table / chart / image</p>
-        </div>
-      </div>
-    </div>
+    log.info(f"  Results  : {len(results)}")
+    log.info(f"  Failures : {len(failures)}")
+    log.info(f"  Time     : {sanity_time:.3f}s")
 
-    <div class="edge-label">clean query</div>
-    <div class="arrow-down"></div>
+    if failures:
+        for i, f in enumerate(failures):
+            log.error(f"  FAILURE [{i}]: {f}")
+        log.error("  Sanity check failed. Fix errors before running full batch.")
+        sys.exit(1)
 
-    <div class="node-wrap" id="nw2">
-      <div class="node" id="n2">
-        <div class="node-head">N2 &mdash; QUERY EXPANDER</div>
-        <div class="node-body">
-          <p>LLM generates 2 paraphrases of cleaned query</p>
-          <p>Output: 3 variants &middot; fallback: 1 if LLM fails</p>
-        </div>
-      </div>
-    </div>
+    if results:
+        blob = ingest_json_results_to_blob(results[0])
+        preview = blob[:400].replace("\n", " ")
+        log.info(f"  Text preview: {preview}...")
+        log.info("  SANITY CHECK PASSED")
+    else:
+        log.error("  No results and no failures — unexpected state.")
+        sys.exit(1)
 
-    <div class="edge-label">3 variants</div>
-    <div class="arrow-down"></div>
+    return sanity_time
 
-    <div class="node-wrap" id="nw3">
-      <div class="node" id="n3">
-        <div class="node-head">N3 &mdash; RETRIEVER</div>
-        <div class="node-body">
-          <p>3&times; independent Milvus ANN search (top-k = 40)</p>
-          <p>Merge results &middot; SHA256 dedup across variants</p>
-          <p>Embed via nv-embedqa-e5-v5 &middot; input_type = query</p>
-        </div>
-      </div>
-    </div>
+# ─────────────────────────────────────────────────────────────────────────────
+# FULL MULTIMODAL INGEST — one file
+# ─────────────────────────────────────────────────────────────────────────────
+def ingest_single_file(client, filepath, api_key, doc_index, total_docs):
+    fname = os.path.basename(filepath)
+    log.info(f"  [{doc_index}/{total_docs}] Ingesting: {fname}")
 
-    <div class="edge-label">ranked candidates</div>
-    <div class="arrow-down"></div>
+    timings = {}
 
-    <div class="node-wrap" id="nw4">
-      <div class="node" id="n4">
-        <div class="node-head">N4 &mdash; RERANKER + QUALITY GATE</div>
-        <div class="node-body">
-          <p>cross-encoder ms-marco-MiniLM-L-12-v2 &middot; top-k = 15</p>
-          <p>Confidence: high &ge; &minus;3.0 &middot; medium &ge; &minus;8.0</p>
-          <p>Quality gate: skip LLM if top score &lt; &minus;10.0</p>
-        </div>
-      </div>
-    </div>
+    t_extract = phase_start(f"Extract  [{fname}]")
+    ingestor = (
+        Ingestor(client=client)
+        .files(filepath)
+        .extract(
+            extract_text=True,
+            extract_tables=True,
+            extract_charts=True,
+            extract_images=True,
+            extract_infographics=True,
+            table_output_format="markdown",
+            text_depth="page",
+        )
+        .split(
+            tokenizer=TOKENIZER,
+            chunk_size=CHUNK_SIZE,
+            chunk_overlap=CHUNK_OVERLAP,
+        )
+        .caption(
+            endpoint_url=CAPTION_ENDPOINT,
+            model_name=CAPTION_MODEL,
+            api_key=api_key,
+        )
+        .embed()
+        .vdb_upload(
+            collection_name=COLLECTION_NAME,
+            milvus_uri=MILVUS_URI,
+            sparse=SPARSE,
+            dense_dim=DENSE_DIM,
+        )
+    )
 
-    <div class="edge-label">top-k chunks</div>
-    <div class="arrow-down"></div>
+    t_ingest_start = time.perf_counter()
+    results, failures = ingestor.ingest(show_progress=False, return_failures=True)
+    total_ingest_time = time.perf_counter() - t_ingest_start
 
-    <div class="node-wrap" id="nw5">
-      <div class="node" id="n5">
-        <div class="node-head">N5 &mdash; GENERATOR</div>
-        <div class="node-body">
-          <p>Primary: meta/llama-3.3-70b-instruct</p>
-          <p>Fallback: nvidia/llama-3.1-nemotron-70b-instruct</p>
-          <p>Prepend last 3 conversation turns &middot; hallucination check</p>
-          <p>retry_count max = 1</p>
-        </div>
-      </div>
-    </div>
+    timings["total_ingest_sec"] = round(total_ingest_time, 3)
+    timings["results_count"]    = len(results)
+    timings["failures_count"]   = len(failures)
 
-    <div class="edge-label">answer</div>
-    <div class="arrow-down"></div>
+    if failures:
+        for i, f in enumerate(failures):
+            log.warning(f"    FAILURE [{i}] in {fname}: {str(f)[:200]}")
 
-    <div class="terminal" id="n-end">ANSWER OUTPUT</div>
+    log.info(
+        f"    {fname} → results={len(results)}  failures={len(failures)}  "
+        f"time={total_ingest_time:.3f}s"
+    )
+    return timings, failures
 
-  </div>
+# ─────────────────────────────────────────────────────────────────────────────
+# BATCH INGEST — all files (mixed formats)
+# ─────────────────────────────────────────────────────────────────────────────
+def run_batch_ingest(client, files, api_key):
+    divider()
+    log.info(f"STEP 2 — FULL MULTIMODAL BATCH INGEST  →  {len(files)} file(s)")
+    log.info(f"  Collection : {COLLECTION_NAME}")
+    log.info(f"  Milvus URI : {MILVUS_URI}")
+    log.info(f"  Caption    : {CAPTION_MODEL}")
+    log.info(f"  Embedder   : dense_dim={DENSE_DIM}  tokenizer={TOKENIZER}")
+    log.info(f"  NIM Models : page-elements | graphic-elements | table-structure | OCR")
+    divider()
 
-  <!-- Right retry rail placeholder -->
-  <div class="retry-col" id="retryCol"></div>
+    batch_t0        = time.perf_counter()
+    all_timings     = {}
+    total_failures  = 0
+    successful_docs = 0
 
-</div>
+    for idx, filepath in enumerate(files, start=1):
+        fname  = os.path.basename(filepath)
+        doc_t0 = time.perf_counter()
 
-<!-- SVG overlay for bypass + retry lines -->
-<svg id="overlay" style="position:absolute;top:0;left:0;pointer-events:none;overflow:visible" width="0" height="0">
-  <defs>
-    <marker id="ma" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
-      <path d="M1 1L9 5L1 9" fill="none" stroke="#555" stroke-width="2" stroke-linecap="round"/>
-    </marker>
-    <marker id="mo" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
-      <path d="M1 1L9 5L1 9" fill="none" stroke="#e8a020" stroke-width="2" stroke-linecap="round"/>
-    </marker>
-  </defs>
-</svg>
+        try:
+            timings, failures = ingest_single_file(
+                client, filepath, api_key, idx, len(files)
+            )
+            all_timings[fname]  = timings
+            total_failures     += timings["failures_count"]
+            if timings["failures_count"] == 0:
+                successful_docs += 1
+        except Exception as e:
+            log.error(f"  EXCEPTION on {fname}: {e}")
+            log.error(traceback.format_exc())
+            all_timings[fname] = {"error": str(e), "total_ingest_sec": 0}
 
-<!-- Retry traversal panel -->
-<div class="retry-panel">
-  <div class="retry-header">RETRY TRAVERSAL &mdash; NODE-BY-NODE PATH</div>
-  <div class="retry-nodes">
-    <div class="r-node start-node">
-      <div class="rn-label">N5</div>
-      <div class="rn-sub">detect<br>hallucination</div>
-    </div>
-    <div class="r-arrow">
-      <div class="ra-dash"></div>
-      <div class="ra-tip ra-tip-orange">&#9658;</div>
-      <div class="ra-label" style="color:#e8a020">climb<br>to N2</div>
-    </div>
-    <div class="r-node re-entry">
-      <div class="rn-label">N2</div>
-      <div class="rn-sub">re-enter<br>stricter query</div>
-    </div>
-    <div class="r-arrow">
-      <div class="ra-line"></div>
-      <div class="ra-tip">&#9658;</div>
-      <div class="ra-label">expand</div>
-    </div>
-    <div class="r-node">
-      <div class="rn-label">N3</div>
-      <div class="rn-sub">re-fetch<br>Milvus</div>
-    </div>
-    <div class="r-arrow">
-      <div class="ra-line"></div>
-      <div class="ra-tip">&#9658;</div>
-      <div class="ra-label">rank</div>
-    </div>
-    <div class="r-node">
-      <div class="rn-label">N4</div>
-      <div class="rn-sub">re-rank<br>quality gate</div>
-    </div>
-    <div class="r-arrow">
-      <div class="ra-line"></div>
-      <div class="ra-tip">&#9658;</div>
-      <div class="ra-label">generate</div>
-    </div>
-    <div class="r-node">
-      <div class="rn-label">N5</div>
-      <div class="rn-sub">re-generate<br>emit result</div>
-    </div>
-    <div class="r-arrow">
-      <div class="ra-line"></div>
-      <div class="ra-tip">&#9658;</div>
-    </div>
-    <div class="r-node" style="border-top-color:#555;min-width:100px">
-      <div class="rn-label" style="color:#aaa;font-size:11px">FINAL ANSWER</div>
-      <div class="rn-sub">retry_count=1<br>stop</div>
-    </div>
-  </div>
+        doc_elapsed = time.perf_counter() - doc_t0
+        log.info(f"  ── doc wall time: {doc_elapsed:.3f}s  ──")
 
-  <div class="retry-steps">
-    <p><span>1.</span> N5 detects hallucination phrase in LLM output (retry_count &lt; 1)</p>
-    <p><span>2.</span> State cloned — answer, chunks, sources all cleared</p>
-    <p><span>3.</span> Query rewritten: original + "use ONLY exact facts from document"</p>
-    <p><span>4.</span> Graph skips N1 — re-enters at N2 with the stricter query</p>
-    <p><span>5.</span> N2 → N3 → N4 → N5 all re-execute on the new query</p>
-    <p><span>6.</span> Second pass emits result regardless — retry_count = 1, stop</p>
-    <p><span>7.</span> Conversation memory updated only on clean (non-hallucinated) answer</p>
-    <p><span>8.</span> wall_ms covers both full passes combined including retry</p>
-  </div>
-</div>
+    batch_total = time.perf_counter() - batch_t0
 
-<div class="footer-legend">
-  <p>DOWN arrow &rarr; happy path continues<br>LEFT bypass &rarr; injection (N1) or gate fail (N4) short-circuits to output<br>N3 no-hits &rarr; empty state passed through; generator returns "not found"</p>
-  <p>DASHED orange &rarr; retry: N5 climbs back to N2 only (N1 not re-run)<br>Subtree traversed on retry: N2 &rarr; N3 &rarr; N4 &rarr; N5<br>Max retry depth = 1 (hard limit in _prepare_retry_state)</p>
-</div>
+    divider()
+    log.info("BATCH INGEST SUMMARY")
+    log.info(f"  Total documents   : {len(files)}")
+    log.info(f"  Successful        : {successful_docs}")
+    log.info(f"  Total failures    : {total_failures}")
+    log.info(f"  Total batch time  : {batch_total:.3f}s")
+    log.info(f"  Avg per document  : {batch_total / max(len(files), 1):.3f}s")
+    divider()
 
-<script>
-(function() {
-  const diagramEl = document.querySelector('.full-diagram');
-  const svg = document.getElementById('overlay');
-  const diagRect = diagramEl.getBoundingClientRect();
+    return all_timings, batch_total
 
-  svg.style.position = 'absolute';
-  diagramEl.style.position = 'relative';
-  diagramEl.appendChild(svg);
+# ─────────────────────────────────────────────────────────────────────────────
+# RAG QUERY + TIMING
+# ─────────────────────────────────────────────────────────────────────────────
+def run_rag_queries(api_key, questions):
+    from openai import OpenAI
+    from nv_ingest_client.util.milvus import nvingest_retrieval
 
-  function getCenter(el) {
-    const r = el.getBoundingClientRect();
-    const pr = diagramEl.getBoundingClientRect();
-    return {
-      x: r.left - pr.left + r.width / 2,
-      y: r.top - pr.top + r.height / 2,
-      top: r.top - pr.top,
-      bottom: r.top - pr.top + r.height,
-      left: r.left - pr.left,
-      right: r.left - pr.left + r.width,
-    };
-  }
+    divider()
+    log.info("STEP 3 — RAG RETRIEVAL + LLM INFERENCE")
+    log.info(f"  Running {len(questions)} question(s)")
+    divider()
 
-  const n1 = getCenter(document.getElementById('n1'));
-  const n2 = getCenter(document.getElementById('n2'));
-  const n3 = getCenter(document.getElementById('n3'));
-  const n4 = getCenter(document.getElementById('n4'));
-  const n5 = getCenter(document.getElementById('n5'));
-  const nEnd = getCenter(document.getElementById('n-end'));
+    llm_client    = OpenAI(base_url=LLM_BASE_URL, api_key=api_key)
+    all_qa        = []
+    query_timings = {}
 
-  const totalH = n5.bottom + 40;
-  svg.setAttribute('width', diagramEl.offsetWidth);
-  svg.setAttribute('height', totalH + 20);
+    for i, q in enumerate(questions, start=1):
+        log.info(f"  Q{i}: {q[:80]}...")
 
-  function line(x1,y1,x2,y2,stroke,dash,marker) {
-    const el = document.createElementNS('http://www.w3.org/2000/svg','line');
-    el.setAttribute('x1',x1); el.setAttribute('y1',y1);
-    el.setAttribute('x2',x2); el.setAttribute('y2',y2);
-    el.setAttribute('stroke',stroke);
-    el.setAttribute('stroke-width','1');
-    if (dash) el.setAttribute('stroke-dasharray',dash);
-    if (marker) el.setAttribute('marker-end',marker);
-    svg.appendChild(el);
-  }
-  function path(d,stroke,dash,marker) {
-    const el = document.createElementNS('http://www.w3.org/2000/svg','path');
-    el.setAttribute('d',d); el.setAttribute('fill','none');
-    el.setAttribute('stroke',stroke); el.setAttribute('stroke-width','1');
-    if (dash) el.setAttribute('stroke-dasharray',dash);
-    if (marker) el.setAttribute('marker-end',marker);
-    svg.appendChild(el);
-  }
-  function txt(x,y,label,color,anchor) {
-    const el = document.createElementNS('http://www.w3.org/2000/svg','text');
-    el.setAttribute('x',x); el.setAttribute('y',y);
-    el.setAttribute('font-size','10');
-    el.setAttribute('font-family','Courier New, monospace');
-    el.setAttribute('fill', color || '#555');
-    el.setAttribute('text-anchor', anchor || 'middle');
-    el.textContent = label;
-    svg.appendChild(el);
-  }
+        t_ret = time.perf_counter()
+        retrieved_docs = nvingest_retrieval(
+            [q],
+            COLLECTION_NAME,
+            milvus_uri=MILVUS_URI,
+            hybrid=SPARSE,
+            top_k=TOP_K,
+        )
+        retrieval_time = time.perf_counter() - t_ret
 
-  const bx = n1.left - 52;
+        if retrieved_docs and retrieved_docs[0]:
+            context      = "\n\n".join([d["entity"]["text"] for d in retrieved_docs[0]])
+            chunks_found = len(retrieved_docs[0])
+        else:
+            context      = "No relevant content found."
+            chunks_found = 0
 
-  // N1 bypass → down left rail → to n-end y
-  path(`M${n1.left} ${n1.y} L${bx} ${n1.y} L${bx} ${nEnd.y} L${nEnd.left} ${nEnd.y}`,
-    '#444', null, 'url(#ma)');
-  txt(bx - 2, (n1.y + n4.y)/2, 'inject / gate', '#444', 'end');
+        log.info(f"    Retrieval  : {retrieval_time:.3f}s  |  chunks found: {chunks_found}")
 
-  // N3 no-hits small branch
-  const bx2 = n3.left - 36;
-  path(`M${n3.left} ${n3.y} L${bx2} ${n3.y} L${bx2} ${n4.top} L${n4.left} ${n4.top + 8}`,
-    '#333', null, 'url(#ma)');
-  txt(bx2 - 2, n3.y - 6, 'no hits', '#333', 'end');
+        prompt = (
+            "Use the following context to answer the question.\n"
+            "If the answer is not in the context, say so.\n\n"
+            f"Context:\n{context}\n\nQuestion: {q}\nAnswer:"
+        )
 
-  // N4 quality gate → same left rail
-  const n4BypassY = n4.y + 10;
-  path(`M${n4.left} ${n4BypassY} L${bx} ${n4BypassY} L${bx} ${nEnd.y}`,
-    '#444', null, null);
+        t_llm_start = time.perf_counter()
+        completion  = llm_client.chat.completions.create(
+            model=LLM_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=1024,
+            temperature=0.7,
+        )
+        llm_time = time.perf_counter() - t_llm_start
+        answer   = completion.choices[0].message.content
 
-  // Retry: N5 right → up → N2 right
-  const rx = n5.right + 48;
-  path(`M${n5.right} ${n5.y} L${rx} ${n5.y} L${rx} ${n2.y} L${n2.right} ${n2.y}`,
-    '#e8a020', '6 3', 'url(#mo)');
-  txt(rx + 4, (n2.y + n5.y)/2, 'hallucination → retry at N2', '#e8a020', 'start');
+        usage             = getattr(completion, "usage", None)
+        prompt_tokens     = getattr(usage, "prompt_tokens",     0) if usage else 0
+        completion_tokens = getattr(usage, "completion_tokens", 0) if usage else 0
+        total_tokens      = getattr(usage, "total_tokens",      0) if usage else 0
+        tokens_per_sec    = (completion_tokens / llm_time) if llm_time > 0 else 0
 
-})();
-</script>
-</body>
-</html>
+        log.info(
+            f"    LLM Inference: {llm_time:.3f}s  |  "
+            f"prompt_tokens={prompt_tokens}  completion_tokens={completion_tokens}  "
+            f"tokens/sec={tokens_per_sec:.1f}"
+        )
+        log.info(f"    Answer preview: {answer[:150].replace(chr(10), ' ')}...")
+
+        query_timings[f"Q{i}"] = {
+            "question"          : q,
+            "retrieval_sec"     : round(retrieval_time, 4),
+            "chunks_found"      : chunks_found,
+            "llm_inference_sec" : round(llm_time, 4),
+            "prompt_tokens"     : prompt_tokens,
+            "completion_tokens" : completion_tokens,
+            "total_tokens"      : total_tokens,
+            "tokens_per_sec"    : round(tokens_per_sec, 2),
+        }
+        all_qa.append({"question": q, "answer": answer, "metrics": query_timings[f"Q{i}"]})
+
+    divider("-")
+    log.info(f"  {'Q':<4}  {'Retrieval':>10}  {'LLM':>10}  {'Tokens':>8}  {'Tok/s':>7}")
+    divider("-")
+    for k, v in query_timings.items():
+        log.info(
+            f"  {k:<4}  {v['retrieval_sec']:>9.3f}s  "
+            f"{v['llm_inference_sec']:>9.3f}s  "
+            f"{v['total_tokens']:>8}  "
+            f"{v['tokens_per_sec']:>6.1f}"
+        )
+    divider("-")
+
+    return query_timings, all_qa
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SAVE ALL METRICS TO JSON
+# ─────────────────────────────────────────────────────────────────────────────
+def save_metrics(all_timings, batch_total, sanity_time, init_time, query_timings):
+    metrics = {
+        "run_id"               : RUN_ID,
+        "run_timestamp"        : datetime.now().isoformat(),
+        "config": {
+            "docs_folder"      : DOCS_FOLDER,
+            "file_patterns"    : FILE_PATTERNS,
+            "collection"       : COLLECTION_NAME,
+            "dense_dim"        : DENSE_DIM,
+            "caption_model"    : CAPTION_MODEL,
+            "llm_model"        : LLM_MODEL,
+            "chunk_size"       : CHUNK_SIZE,
+            "chunk_overlap"    : CHUNK_OVERLAP,
+        },
+        "nim_endpoints": {
+            "page_elements"    : os.environ.get("YOLOX_HTTP_ENDPOINT",                  "NOT SET"),
+            "graphic_elements" : os.environ.get("YOLOX_GRAPHIC_ELEMENTS_HTTP_ENDPOINT", "NOT SET"),
+            "table_structure"  : os.environ.get("YOLOX_TABLE_STRUCTURE_HTTP_ENDPOINT",  "NOT SET"),
+            "ocr"              : os.environ.get("OCR_HTTP_ENDPOINT",                    "NOT SET"),
+        },
+        "phase_times_sec": {
+            "pipeline_init"    : round(init_time, 3),
+            "sanity_check"     : round(sanity_time, 3),
+            "batch_ingest"     : round(batch_total, 3),
+        },
+        "per_document_timings" : all_timings,
+        "rag_query_timings"    : query_timings,
+        "summary": {
+            "total_docs"       : len(all_timings),
+            "successful_docs"  : sum(1 for v in all_timings.values() if "error" not in v and v.get("failures_count", 1) == 0),
+            "avg_ingest_sec"   : round(
+                sum(v.get("total_ingest_sec", 0) for v in all_timings.values()) / max(len(all_timings), 1), 3
+            ),
+            "total_wall_time_sec" : round(init_time + sanity_time + batch_total, 3),
+        },
+    }
+    with open(METRICS_FILE, "w", encoding="utf-8") as f:
+        json.dump(metrics, f, indent=2)
+    log.info(f"  Metrics saved → {METRICS_FILE}")
+    return metrics
+
+# ─────────────────────────────────────────────────────────────────────────────
+# FINAL SUMMARY
+# ─────────────────────────────────────────────────────────────────────────────
+def print_final_summary(metrics, init_time, sanity_time, batch_total):
+    divider("═")
+    log.info("FINAL RUN SUMMARY")
+    divider("═")
+    log.info(f"  Run ID                  : {metrics['run_id']}")
+    log.info(f"  Pipeline init time      : {init_time:.3f}s")
+    log.info(f"  Sanity check time       : {sanity_time:.3f}s")
+    log.info(f"  Total batch ingest time : {batch_total:.3f}s")
+    log.info(f"  Total documents         : {metrics['summary']['total_docs']}")
+    log.info(f"  Successful documents    : {metrics['summary']['successful_docs']}")
+    log.info(f"  Avg ingest per doc      : {metrics['summary']['avg_ingest_sec']:.3f}s")
+    log.info(f"  Total wall time         : {metrics['summary']['total_wall_time_sec']:.3f}s")
+    divider("-")
+    log.info(f"  Log file     → {LOG_FILE}")
+    log.info(f"  Metrics JSON → {METRICS_FILE}")
+    log.info(f"  Answers JSON → {ANSWERS_FILE}")
+    divider("═")
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MAIN
+# ─────────────────────────────────────────────────────────────────────────────
+def main():
+    # ── Determine question mode from CLI flag ────────────────────────────────
+    interactive_mode = "--interactive" in sys.argv
+
+    global_start = time.perf_counter()
+    divider("═")
+    log.info("NV-INGEST 25.9.0 — LIBRARY MODE PIPELINE WITH FULL LOGGING")
+    log.info(f"Run started at : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    log.info(f"Results dir    : {RESULTS_DIR}/")
+    log.info(f"Log file       : {LOG_FILE}")
+    log.info(f"Question mode  : {'INTERACTIVE (terminal)' if interactive_mode else 'PREDEFINED (DEFAULT_QUESTIONS)'}")
+    divider("═")
+
+    # ── STEP 0: Collect questions BEFORE GPU work begins ────────────────────
+    # This ensures no GPU time is wasted waiting for terminal input.
+    if interactive_mode:
+        questions = collect_questions()
+    else:
+        questions = DEFAULT_QUESTIONS
+        log.info(f"  Using {len(questions)} predefined question(s).")
+
+    # 1. Check environment
+    api_key = check_environment()
+
+    # 2. Collect files (all formats from FILE_PATTERNS)
+    files = collect_files()
+
+    # 3. Start pipeline
+    client, init_time = start_pipeline()
+
+    # 4. Sanity check on first file
+    sanity_time = sanity_check(client, files[0])
+
+    # 5. Full batch ingest
+    all_timings, batch_total = run_batch_ingest(client, files, api_key)
+
+    # 6. RAG queries + timing
+    query_timings, all_qa = run_rag_queries(api_key, questions)
+
+    # 7. Save answers
+    with open(ANSWERS_FILE, "w", encoding="utf-8") as f:
+        json.dump(all_qa, f, indent=2, ensure_ascii=False)
+    log.info(f"  Answers saved → {ANSWERS_FILE}")
+
+    # 8. Save metrics
+    metrics = save_metrics(all_timings, batch_total, sanity_time, init_time, query_timings)
+
+    # 9. Final summary
+    print_final_summary(metrics, init_time, sanity_time, batch_total)
+
+    total_wall = time.perf_counter() - global_start
+    log.info(f"  Total wall clock time : {total_wall:.3f}s")
+    log.info("  PIPELINE COMPLETED SUCCESSFULLY")
+    divider("═")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        log.warning("Interrupted by user.")
+        sys.exit(1)
+    except Exception as e:
+        log.error(f"FATAL ERROR: {e}")
+        log.error(traceback.format_exc())
+        sys.exit(1)
