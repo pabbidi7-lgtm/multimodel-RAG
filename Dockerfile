@@ -1,693 +1,257 @@
-import logging
-import os
-import sys
-import time
-import json
-import glob
-import socket
-import subprocess
-import traceback
-from datetime import datetime
-from pathlib import Path
-
-
-if sys.version_info < (3, 12):
-    print(
-        f"[FATAL] NV-Ingest 25.9.0 officially requires Python 3.12+.\n"
-        f"        You are running Python {sys.version}.\n"
-        f"        Run: uv venv --python 3.12 nvingest && source nvingest/bin/activate"
-    )
-    sys.exit(1)
-
-try:
-    import pymilvus
-    pymilvus.connections.disconnect("default")
-except Exception:
-    pass  # No existing connection — this is fine, just clearing stale state
-
-# ─────────────────────────────────────────────────────────────────────────────
-# CONFIGURATION — Edit these values before running
-# ─────────────────────────────────────────────────────────────────────────────
-DOCS_FOLDER        = "Docs"
-FILE_PATTERNS      = ["*.pdf", "*.docx", "*.pptx", "*.jpeg", "*.jpg", "*.png"]
-MILVUS_URI         = "milvus.db"
-COLLECTION_NAME    = "multimodal_docs"
-SPARSE             = False
-DENSE_DIM          = 2048           # matches llama-3.2-nv-embedqa-1b-v2
-CHUNK_SIZE         = 512
-CHUNK_OVERLAP      = 50
-TOKENIZER          = "intfloat/e5-large-unsupervised"
-
-LLM_MODEL          = "meta/llama-3.3-70b-instruct"
-LLM_BASE_URL       = "https://integrate.api.nvidia.com/v1"
-
-PIPELINE_WAIT_SEC  = 90
-RESULTS_DIR        = "Outputs"
-TOP_K              = 10
-
-NIM_ENV_VARS = {
-    "YOLOX_HTTP_ENDPOINT"                  : "http://localhost:8000/v1/infer",
-    "YOLOX_INFER_PROTOCOL"                 : "http",
-    "YOLOX_GRAPHIC_ELEMENTS_HTTP_ENDPOINT" : "http://localhost:8003/v1/infer",
-    "YOLOX_GRAPHIC_ELEMENTS_INFER_PROTOCOL": "http",
-    "YOLOX_TABLE_STRUCTURE_HTTP_ENDPOINT"  : "http://localhost:8006/v1/infer",
-    "YOLOX_TABLE_STRUCTURE_INFER_PROTOCOL" : "http",
-    "OCR_HTTP_ENDPOINT"                    : "http://localhost:8009/v1/infer",
-    "OCR_INFER_PROTOCOL"                   : "http",
-}
-
-# ─────────────────────────────────────────────────────────────────────────────
-# PREDEFINED QUESTIONS
-# ─────────────────────────────────────────────────────────────────────────────
-DEFAULT_QUESTIONS = [
-    "Why did economics and physics become early movers in open access adoption?",
-    "How did arXiv influence scholarly communication in physics?",
-    "Why did life sciences move more toward open access journals and APC models?",
-    "What does the report mean by successive waves of open access innovation?",
-    "How does the report connect open access, open data, and reproducibility?",
-]
-
-# ─────────────────────────────────────────────────────────────────────────────
-# LOGGING SETUP
-# ─────────────────────────────────────────────────────────────────────────────
-Path(RESULTS_DIR).mkdir(parents=True, exist_ok=True)
-
-RUN_ID        = datetime.now().strftime("%Y%m%d_%H%M%S")
-LOG_FILE      = os.path.join(RESULTS_DIR, f"pipeline_run_{RUN_ID}.log")
-METRICS_FILE  = os.path.join(RESULTS_DIR, f"metrics_{RUN_ID}.json")
-ANSWERS_FILE  = os.path.join(RESULTS_DIR, f"answers_{RUN_ID}.json")
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s  %(levelname)-8s  %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-    handlers=[
-        logging.FileHandler(LOG_FILE, mode="w", encoding="utf-8", delay=False),
-        logging.StreamHandler(sys.stdout),   # also print to console
-    ],
-)
-log = logging.getLogger("nv_ingest_pipeline")
-
-def divider(char="═", width=70):
-    log.info(char * width)
-
-def phase_start(name):
-    log.info(f"PHASE START : {name}")
-    return time.perf_counter()
-
-def phase_end(name, t0):
-    elapsed = time.perf_counter() - t0
-    log.info(f"PHASE END   : {name}  →  {elapsed:.3f}s")
-    return elapsed
-
-# ─────────────────────────────────────────────────────────────────────────────
-# COLLECT QUESTIONS
-# ─────────────────────────────────────────────────────────────────────────────
-def collect_questions():
-    print("\n" + "═" * 70)
-    print("  INTERACTIVE QUESTION MODE")
-    print("  Enter questions. Press Enter on blank line when done.")
-    print("═" * 70 + "\n")
-    questions = []
-    idx = 1
-    while True:
-        try:
-            q = input(f"  Q{idx}: ").strip()
-        except EOFError:
-            break
-        if q.lower() in ("", "done"):
-            if not questions:
-                print("  [!] Enter at least one question.")
-                continue
-            break
-        questions.append(q)
-        idx += 1
-    log.info(f"Interactive mode: {len(questions)} question(s) collected.")
-    return questions
-
-# ─────────────────────────────────────────────────────────────────────────────
-# This function must be called as the very first thing in main()
-# ─────────────────────────────────────────────────────────────────────────────
-def inject_and_verify_environment():
-    """
-    CRITICAL: inject NIM endpoint env vars into os.environ RIGHT NOW,
-    before run_pipeline() is called.  The subprocess copies os.environ
-    at call time — if vars are missing here, NIMs are never reached.
-    """
-    divider()
-    log.info("STEP 0 — ENVIRONMENT INJECTION + VERIFICATION")
-    divider()
-
-    # 1. NVIDIA_API_KEY — must already be in env (user sets this)
-    api_key = os.environ.get("NVIDIA_API_KEY", "")
-    if not api_key:
-        log.error("NVIDIA_API_KEY is NOT set. Run: export NVIDIA_API_KEY='nvapi-...'")
-        sys.exit(1)
-    log.info(f"  NVIDIA_API_KEY        : {'*' * 8}{api_key[-6:]}")
-
-    # 2. Inject NIM endpoints — set defaults if not already exported
-    for var, default_val in NIM_ENV_VARS.items():
-        current = os.environ.get(var, "")
-        if not current:
-            os.environ[var] = default_val
-            log.info(f"  {var:<47} SET TO DEFAULT: {default_val}")
-        else:
-            log.info(f"  {var:<47} = {current}")
-
-    # 3. Verify all 4 NIM HTTP endpoints are set (not blank)
-    nim_http_vars = [
-        "YOLOX_HTTP_ENDPOINT",
-        "YOLOX_GRAPHIC_ELEMENTS_HTTP_ENDPOINT",
-        "YOLOX_TABLE_STRUCTURE_HTTP_ENDPOINT",
-        "OCR_HTTP_ENDPOINT",
-    ]
-    all_set = all(os.environ.get(v, "") for v in nim_http_vars)
-    if all_set:
-        log.info("  All 4 NIM HTTP endpoints are set in os.environ ✓")
-    else:
-        log.warning("  Some NIM endpoints are still blank after injection — check above")
-
-    log.info("  Environment injection complete. run_pipeline() will inherit these.")
-    return api_key
-
-def check_nim_health():
-    divider()
-    log.info("NIM HEALTH CHECK — verifying all 4 NIM endpoints")
-    divider()
-    nim_ports = {
-        "page-elements (8000)"    : "http://localhost:8000/v1/health/ready",
-        "graphic-elements (8003)" : "http://localhost:8003/v1/health/ready",
-        "table-structure (8006)"  : "http://localhost:8006/v1/health/ready",
-        "ocr (8009)"              : "http://localhost:8009/v1/health/ready",
-    }
-    all_ok = True
-    for name, url in nim_ports.items():
-        try:
-            r = subprocess.run(
-                ["curl", "-s", "-o", "/dev/null", "-w", "%{http_code}", "--max-time", "5", url],
-                capture_output=True, text=True
-            )
-            code = r.stdout.strip()
-            if code in ("200", "201"):
-                log.info(f"  ✓  {name}  →  HTTP {code}")
-            else:
-                log.warning(f"  ✗  {name}  →  HTTP {code}  (NIM may not be ready)")
-                all_ok = False
-        except Exception as e:
-            log.warning(f"  ✗  {name}  →  curl failed: {e}")
-            all_ok = False
-
-    if all_ok:
-        log.info("  All 4 NIMs are healthy and ready ✓")
-    else:
-        log.warning("  One or more NIMs did not respond — extraction for those modalities will fall back")
-        log.warning("  Proceeding anyway — check docker ps and docker logs if results are empty")
-    return all_ok
-
-# ─────────────────────────────────────────────────────────────────────────────
-# COLLECT FILES
-# ─────────────────────────────────────────────────────────────────────────────
-def collect_files():
-    divider()
-    log.info(f"FILE DISCOVERY  →  folder: {DOCS_FOLDER}/")
-    log.info(f"  Formats: {', '.join(FILE_PATTERNS)}")
-    files = []
-    for pattern in FILE_PATTERNS:
-        matched = sorted(glob.glob(os.path.join(DOCS_FOLDER, pattern)))
-        if matched:
-            log.info(f"  {pattern:<12} → {len(matched)} file(s)")
-        files.extend(matched)
-    files = sorted(set(files))
-    log.info(f"  ─── Total: {len(files)} file(s) ───")
-    for f in files:
-        size_mb = os.path.getsize(f) / (1024 * 1024)
-        log.info(f"  › {f}  ({size_mb:.2f} MB)")
-    if not files:
-        log.error(f"  No files found in '{DOCS_FOLDER}/' matching {FILE_PATTERNS}.")
-        sys.exit(1)
-    return files
-
-# ─────────────────────────────────────────────────────────────────────────────
-# PORT READINESS POLL (replaces blind sleep)
-# ─────────────────────────────────────────────────────────────────────────────
-def wait_for_port(port=7671, host="localhost", timeout=120):
-    """Poll port 7671 until it accepts connections, up to timeout seconds."""
-    log.info(f"  Waiting for pipeline port {port} to be ready (max {timeout}s)...")
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        try:
-            with socket.create_connection((host, port), timeout=2):
-                log.info(f"  Port {port} is accepting connections ✓")
-                return True
-        except (ConnectionRefusedError, OSError):
-            time.sleep(2)
-    log.error(f"  Port {port} did not become ready within {timeout}s — pipeline subprocess may have failed")
-    return False
-
-# ─────────────────────────────────────────────────────────────────────────────
-# PIPELINE INIT
-# ─────────────────────────────────────────────────────────────────────────────
-def start_pipeline():
-    divider()
-    log.info("PIPELINE INITIALISATION")
-    divider()
-
-    
-    from nv_ingest.framework.orchestration.ray.util.pipeline.pipeline_runners import (
-        run_pipeline,
-        PipelineCreationSchema,
-    )
-    from nv_ingest_client.client import Ingestor, NvIngestClient
-    from nv_ingest_api.util.message_brokers.simple_message_broker import SimpleClient
-
-    t0 = phase_start("Pipeline subprocess start")
-    config = PipelineCreationSchema()
-    run_pipeline(
-        config,
-        block=False,
-        disable_dynamic_scaling=True,
-        run_in_subprocess=True,
-    )
-    init_time = phase_end("Pipeline subprocess start", t0)
-
-    # FIX-4 — poll for port readiness instead of blind sleep
-    log.info(f"  Pipeline process launched. Waiting for port 7671 (max {PIPELINE_WAIT_SEC}s)...")
-    port_ready = wait_for_port(port=7671, timeout=PIPELINE_WAIT_SEC)
-    if not port_ready:
-        log.error("  Pipeline port 7671 never opened. Check subprocess for errors.")
-        log.error("  Common causes: Ray OOM, missing env var, import error in subprocess")
-        sys.exit(1)
-
-    # Extra 5s buffer for Ray actor registration after port opens
-    time.sleep(5)
-
-    client = NvIngestClient(
-        message_client_allocator=SimpleClient,
-        message_client_port=7671,
-        message_client_hostname="localhost",
-    )
-    log.info("  NvIngestClient connected  →  localhost:7671 ✓")
-    return client, init_time
-
-# ─────────────────────────────────────────────────────────────────────────────
-# SANITY CHECK — text-only on first file
-# ─────────────────────────────────────────────────────────────────────────────
-def sanity_check(client, filepath):
-    from nv_ingest_client.client import Ingestor
-    from nv_ingest_client.util.process_json_files import ingest_json_results_to_blob
-
-    divider()
-    log.info(f"SANITY CHECK (text-only)  →  {filepath}")
-    divider()
-    t0 = phase_start("Text-only extraction")
-    ingestor = (
-        Ingestor(client=client)
-        .files(filepath)
-        .extract(
-            extract_text=True,
-            extract_tables=False,
-            extract_charts=False,
-            extract_images=False,
-            extract_infographics=False,
-            text_depth="page",
-        )
-    )
-    results, failures = ingestor.ingest(show_progress=True, return_failures=True)
-    sanity_time = phase_end("Text-only extraction", t0)
-
-    log.info(f"  Results  : {len(results)}")
-    log.info(f"  Failures : {len(failures)}")
-
-    if failures:
-        for i, f in enumerate(failures):
-            log.error(f"  FAILURE [{i}]: {f}")
-        log.error("  Sanity check FAILED. Fix the above errors before full batch.")
-        sys.exit(1)
-
-    if results:
-        blob = ingest_json_results_to_blob(results[0])
-        log.info(f"  Text preview: {blob[:300].replace(chr(10), ' ')}...")
-        log.info("  SANITY CHECK PASSED ✓")
-    else:
-        log.error("  No results and no failures — unexpected empty response.")
-        sys.exit(1)
-
-    return sanity_time
-
-# ─────────────────────────────────────────────────────────────────────────────
-# INGEST ONE FILE — full multimodal, NO caption 
-# ─────────────────────────────────────────────────────────────────────────────
-def ingest_single_file(client, filepath, doc_index, total_docs):
-    from nv_ingest_client.client import Ingestor
-
-    fname = os.path.basename(filepath)
-    log.info(f"  [{doc_index}/{total_docs}] Ingesting: {fname}")
-
-    t_ingest_start = time.perf_counter()
-    ingestor = (
-        Ingestor(client=client)
-        .files(filepath)
-        .extract(
-            extract_text=True,
-            extract_tables=True,
-            extract_charts=True,
-            extract_images=True,
-            extract_infographics=True,
-            table_output_format="markdown",
-            text_depth="page",
-        )
-        .split(
-            tokenizer=TOKENIZER,
-            chunk_size=CHUNK_SIZE,
-            chunk_overlap=CHUNK_OVERLAP,
-        )
-    
-        .embed()
-        .vdb_upload(
-            collection_name=COLLECTION_NAME,
-            milvus_uri=MILVUS_URI,
-            sparse=SPARSE,
-            dense_dim=DENSE_DIM,
-        )
-    )
-    results, failures = ingestor.ingest(show_progress=False, return_failures=True)
-    total_ingest_time = time.perf_counter() - t_ingest_start
-
-    timings = {
-        "total_ingest_sec" : round(total_ingest_time, 3),
-        "results_count"    : len(results),
-        "failures_count"   : len(failures),
-    }
-
-    if failures:
-        for i, f in enumerate(failures):
-            log.warning(f"    FAILURE [{i}] in {fname}: {str(f)[:200]}")
-
-    log.info(
-        f"    {fname} → results={len(results)}  failures={len(failures)}  "
-        f"time={total_ingest_time:.3f}s"
-    )
-    return timings, failures
-
-# ─────────────────────────────────────────────────────────────────────────────
-# BATCH INGEST
-# ─────────────────────────────────────────────────────────────────────────────
-def run_batch_ingest(client, files):
-    divider()
-    log.info(f"BATCH INGEST  →  {len(files)} file(s)")
-    log.info(f"  Collection : {COLLECTION_NAME}")
-    log.info(f"  Milvus URI : {MILVUS_URI}")
-    log.info(f"  Embedder   : dense_dim={DENSE_DIM}  tokenizer={TOKENIZER}")
-    divider()
-
-    batch_t0        = time.perf_counter()
-    all_timings     = {}
-    total_failures  = 0
-    successful_docs = 0
-
-    for idx, filepath in enumerate(files, start=1):
-        fname  = os.path.basename(filepath)
-        doc_t0 = time.perf_counter()
-        try:
-            timings, failures = ingest_single_file(client, filepath, idx, len(files))
-            all_timings[fname]  = timings
-            total_failures     += timings["failures_count"]
-            if timings["failures_count"] == 0:
-                successful_docs += 1
-        except Exception as e:
-            log.error(f"  EXCEPTION on {fname}: {e}")
-            log.error(traceback.format_exc())
-            all_timings[fname] = {"error": str(e), "total_ingest_sec": 0, "failures_count": 1}
-        doc_elapsed = time.perf_counter() - doc_t0
-        log.info(f"  ── doc wall time: {doc_elapsed:.3f}s ──")
-
-    batch_total = time.perf_counter() - batch_t0
-
-    divider()
-    log.info("BATCH INGEST SUMMARY")
-    log.info(f"  Total documents  : {len(files)}")
-    log.info(f"  Successful       : {successful_docs}")
-    log.info(f"  Total failures   : {total_failures}")
-    log.info(f"  Total batch time : {batch_total:.3f}s")
-    log.info(f"  Avg per document : {batch_total / max(len(files), 1):.3f}s")
-    divider()
-    return all_timings, batch_total
-
-# ─────────────────────────────────────────────────────────────────────────────
-# VERIFY MILVUS HAS ENTITIES BEFORE QUERYING
-# ─────────────────────────────────────────────────────────────────────────────
-def verify_milvus_populated():
-    divider()
-    log.info("MILVUS VERIFICATION — checking entity count before RAG queries")
-    try:
-        from pymilvus import Collection, connections, utility
-        connections.connect(uri=MILVUS_URI)
-        if utility.has_collection(COLLECTION_NAME):
-            col = Collection(COLLECTION_NAME)
-            col.load()
-            count = col.num_entities
-            log.info(f"  Collection '{COLLECTION_NAME}' has {count} entities")
-            if count == 0:
-                log.error("  ZERO entities in Milvus — embedding/upload step failed silently")
-                log.error("  Check: env vars set? NIM health? milvus.db not locked?")
-                return False
-            log.info("  Milvus is populated ✓")
-            return True
-        else:
-            log.error(f"  Collection '{COLLECTION_NAME}' does not exist — vdb_upload failed")
-            return False
-    except Exception as e:
-        log.error(f"  Milvus verification error: {e}")
-        return False
-
-# ─────────────────────────────────────────────────────────────────────────────
-# RAG QUERIES
-# ─────────────────────────────────────────────────────────────────────────────
-def run_rag_queries(api_key, questions):
-    from openai import OpenAI
-    from nv_ingest_client.util.milvus import nvingest_retrieval
-
-    divider()
-    log.info(f"RAG RETRIEVAL + LLM INFERENCE  →  {len(questions)} question(s)")
-    divider()
-
-    llm_client    = OpenAI(base_url=LLM_BASE_URL, api_key=api_key)
-    all_qa        = []
-    query_timings = {}
-
-    for i, q in enumerate(questions, start=1):
-        log.info(f"  Q{i}: {q[:80]}...")
-
-        t_ret = time.perf_counter()
-        retrieved_docs = nvingest_retrieval(
-            [q],
-            COLLECTION_NAME,
-            milvus_uri=MILVUS_URI,
-            hybrid=SPARSE,
-            top_k=TOP_K,
-        )
-        retrieval_time = time.perf_counter() - t_ret
-
-        if retrieved_docs and retrieved_docs[0]:
-            context      = "\n\n".join([d["entity"]["text"] for d in retrieved_docs[0]])
-            chunks_found = len(retrieved_docs[0])
-        else:
-            context      = "No relevant content found."
-            chunks_found = 0
-
-        log.info(f"    Retrieval: {retrieval_time:.3f}s  |  chunks: {chunks_found}")
-
-        prompt = (
-            "Use the following context to answer the question.\n"
-            "If the answer is not in the context, say so.\n\n"
-            f"Context:\n{context}\n\nQuestion: {q}\nAnswer:"
-        )
-
-        t_llm = time.perf_counter()
-        try:
-            completion = llm_client.chat.completions.create(
-                model=LLM_MODEL,
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=1024,
-                temperature=0.7,
-            )
-            llm_time = time.perf_counter() - t_llm
-            answer   = completion.choices[0].message.content
-
-            usage             = getattr(completion, "usage", None)
-            prompt_tokens     = getattr(usage, "prompt_tokens",     0) if usage else 0
-            completion_tokens = getattr(usage, "completion_tokens", 0) if usage else 0
-            total_tokens      = getattr(usage, "total_tokens",      0) if usage else 0
-            tokens_per_sec    = (completion_tokens / llm_time) if llm_time > 0 else 0
-
-        except Exception as e:
-            log.error(f"    LLM call failed for Q{i}: {e}")
-            llm_time = 0; answer = f"LLM ERROR: {e}"
-            prompt_tokens = completion_tokens = total_tokens = tokens_per_sec = 0
-
-        log.info(f"    LLM: {llm_time:.3f}s  |  tokens={total_tokens}  tok/s={tokens_per_sec:.1f}")
-        log.info(f"    Answer preview: {answer[:120].replace(chr(10), ' ')}...")
-
-        query_timings[f"Q{i}"] = {
-            "question"          : q,
-            "retrieval_sec"     : round(retrieval_time, 4),
-            "chunks_found"      : chunks_found,
-            "llm_inference_sec" : round(llm_time, 4),
-            "prompt_tokens"     : prompt_tokens,
-            "completion_tokens" : completion_tokens,
-            "total_tokens"      : total_tokens,
-            "tokens_per_sec"    : round(tokens_per_sec, 2),
-        }
-        all_qa.append({"question": q, "answer": answer, "metrics": query_timings[f"Q{i}"]})
-
-        # Small sleep between LLM calls to avoid rate-limit 429
-        time.sleep(1)
-
-    return query_timings, all_qa
-
-# ─────────────────────────────────────────────────────────────────────────────
-# SAVE METRICS
-# ─────────────────────────────────────────────────────────────────────────────
-def save_metrics(all_timings, batch_total, sanity_time, init_time, query_timings):
-    metrics = {
-        "run_id"        : RUN_ID,
-        "run_timestamp" : datetime.now().isoformat(),
-        "python_version": sys.version,
-        "config": {
-            "docs_folder"   : DOCS_FOLDER,
-            "file_patterns" : FILE_PATTERNS,
-            "collection"    : COLLECTION_NAME,
-            "dense_dim"     : DENSE_DIM,
-            "llm_model"     : LLM_MODEL,
-            "chunk_size"    : CHUNK_SIZE,
-            "chunk_overlap" : CHUNK_OVERLAP,
-        },
-        "nim_endpoints": {
-            "page_elements"    : os.environ.get("YOLOX_HTTP_ENDPOINT",                  "NOT SET"),
-            "graphic_elements" : os.environ.get("YOLOX_GRAPHIC_ELEMENTS_HTTP_ENDPOINT", "NOT SET"),
-            "table_structure"  : os.environ.get("YOLOX_TABLE_STRUCTURE_HTTP_ENDPOINT",  "NOT SET"),
-            "ocr"              : os.environ.get("OCR_HTTP_ENDPOINT",                    "NOT SET"),
-        },
-        "phase_times_sec": {
-            "pipeline_init" : round(init_time, 3),
-            "sanity_check"  : round(sanity_time, 3),
-            "batch_ingest"  : round(batch_total, 3),
-        },
-        "per_document_timings" : all_timings,
-        "rag_query_timings"    : query_timings,
-        "summary": {
-            "total_docs"     : len(all_timings),
-            "successful_docs": sum(
-                1 for v in all_timings.values()
-                if "error" not in v and v.get("failures_count", 1) == 0
-            ),
-            "avg_ingest_sec" : round(
-                sum(v.get("total_ingest_sec", 0) for v in all_timings.values())
-                / max(len(all_timings), 1), 3
-            ),
-            "total_wall_time_sec": round(init_time + sanity_time + batch_total, 3),
-        },
-    }
-    with open(METRICS_FILE, "w", encoding="utf-8") as f:
-        json.dump(metrics, f, indent=2)
-    log.info(f"  Metrics saved → {METRICS_FILE}")
-    return metrics
-
-# ─────────────────────────────────────────────────────────────────────────────
-# FINAL SUMMARY
-# ─────────────────────────────────────────────────────────────────────────────
-def print_final_summary(metrics, init_time, sanity_time, batch_total):
-    divider("═")
-    log.info("FINAL RUN SUMMARY")
-    divider("═")
-    log.info(f"  Run ID                  : {metrics['run_id']}")
-    log.info(f"  Pipeline init time      : {init_time:.3f}s")
-    log.info(f"  Sanity check time       : {sanity_time:.3f}s")
-    log.info(f"  Total batch ingest time : {batch_total:.3f}s")
-    log.info(f"  Total documents         : {metrics['summary']['total_docs']}")
-    log.info(f"  Successful documents    : {metrics['summary']['successful_docs']}")
-    log.info(f"  Avg ingest per doc      : {metrics['summary']['avg_ingest_sec']:.3f}s")
-    log.info(f"  Total wall time         : {metrics['summary']['total_wall_time_sec']:.3f}s")
-    divider("-")
-    log.info(f"  Log file     → {LOG_FILE}")
-    log.info(f"  Metrics JSON → {METRICS_FILE}")
-    log.info(f"  Answers JSON → {ANSWERS_FILE}")
-    divider("═")
-
-# ─────────────────────────────────────────────────────────────────────────────
-# MAIN
-# ─────────────────────────────────────────────────────────────────────────────
-def main():
-    interactive_mode = "--interactive" in sys.argv
-
-    global_start = time.perf_counter()
-    divider("═")
-    log.info("NV-INGEST 25.9.0 — LIBRARY MODE PIPELINE (FULLY CORRECTED)")
-    log.info(f"Run started at : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    log.info(f"Python version : {sys.version}")
-    log.info(f"Results dir    : {RESULTS_DIR}/")
-    log.info(f"Log file       : {LOG_FILE}")
-    log.info(f"Question mode  : {'INTERACTIVE' if interactive_mode else 'PREDEFINED'}")
-    divider("═")
-
-    # STEP 0 — Collect questions BEFORE any GPU work
-    if interactive_mode:
-        questions = collect_questions()
-    else:
-        questions = DEFAULT_QUESTIONS
-        log.info(f"  Using {len(questions)} predefined question(s).")
-
-    # STEP 1 — FIX-2: inject + verify env vars BEFORE run_pipeline()
-    api_key = inject_and_verify_environment()
-
-    # STEP 2 — Collect files
-    files = collect_files()
-
-    # STEP 3 — Start pipeline (env vars already in os.environ, subprocess inherits them)
-    client, init_time = start_pipeline()
-
-    # STEP 4 — FIX-5: NIM health check right after pipeline starts
-    check_nim_health()
-
-    # STEP 5 — Sanity check (text-only) on first file
-    sanity_time = sanity_check(client, files[0])
-
-    # STEP 6 — Full batch ingest
-    all_timings, batch_total = run_batch_ingest(client, files)
-
-    # STEP 7 — FIX-9: Verify Milvus has data before querying
-    milvus_ok = verify_milvus_populated()
-    if not milvus_ok:
-        log.error("  Skipping RAG queries — Milvus is empty. Check ingest logs above.")
-        query_timings, all_qa = {}, []
-    else:
-        # STEP 8 — RAG queries
-        query_timings, all_qa = run_rag_queries(api_key, questions)
-
-    # STEP 9 — Save answers
-    with open(ANSWERS_FILE, "w", encoding="utf-8") as f:
-        json.dump(all_qa, f, indent=2, ensure_ascii=False)
-    log.info(f"  Answers saved → {ANSWERS_FILE}")
-
-    # STEP 10 — Save metrics
-    metrics = save_metrics(all_timings, batch_total, sanity_time, init_time, query_timings)
-
-    # STEP 11 — Final summary
-    print_final_summary(metrics, init_time, sanity_time, batch_total)
-
-    total_wall = time.perf_counter() - global_start
-    log.info(f"  Total wall clock time : {total_wall:.3f}s")
-    log.info("  PIPELINE COMPLETED SUCCESSFULLY")
-    divider("═")
-
-
-if __name__ == "__main__":
-    try:
-        main()
-    except KeyboardInterrupt:
-        log.warning("Interrupted by user.")
-        sys.exit(1)
-    except Exception as e:
-        log.error(f"FATAL ERROR: {e}")
-        log.error(traceback.format_exc())
-        sys.exit(1)
+taskset -c 0-7 python pipelinecp.py
+[I 2026-04-27T06:18:21.029] Centralized logging configured (console only) console_level=INFO log_dir=none (NEMO_EVALUATOR_LOG_DIR not set) logger=nemo_evaluator.logging.utils
+[I 2026-04-27T06:18:25.906] ══════════════════════════════════════════════════════════════════════
+[I 2026-04-27T06:18:25.906] NV-INGEST 25.9.0 — LIBRARY MODE PIPELINE (FULLY CORRECTED)
+[I 2026-04-27T06:18:25.906] Run started at : 2026-04-27 06:18:25
+[I 2026-04-27T06:18:25.906] Python version : 3.12.13 | packaged by Anaconda, Inc. | (main, Mar 19 2026, 20:20:58) [GCC 14.3.0]
+[I 2026-04-27T06:18:25.906] Results dir    : Outputs/
+[I 2026-04-27T06:18:25.906] Log file       : Outputs/pipeline_run_20260427_061825.log
+[I 2026-04-27T06:18:25.906] Question mode  : PREDEFINED
+[I 2026-04-27T06:18:25.906] ══════════════════════════════════════════════════════════════════════
+[I 2026-04-27T06:18:25.906]   Using 5 predefined question(s).
+[I 2026-04-27T06:18:25.907] ══════════════════════════════════════════════════════════════════════
+[I 2026-04-27T06:18:25.907] STEP 0 — ENVIRONMENT INJECTION + VERIFICATION
+[I 2026-04-27T06:18:25.907] ══════════════════════════════════════════════════════════════════════
+[I 2026-04-27T06:18:25.907]   NVIDIA_API_KEY        : ********jMJZNZ
+[I 2026-04-27T06:18:25.907]   YOLOX_HTTP_ENDPOINT                             SET TO DEFAULT: http://localhost:8000/v1/infer
+[I 2026-04-27T06:18:25.907]   YOLOX_INFER_PROTOCOL                            SET TO DEFAULT: http
+[I 2026-04-27T06:18:25.907]   YOLOX_GRAPHIC_ELEMENTS_HTTP_ENDPOINT            SET TO DEFAULT: http://localhost:8003/v1/infer
+[I 2026-04-27T06:18:25.907]   YOLOX_GRAPHIC_ELEMENTS_INFER_PROTOCOL           SET TO DEFAULT: http
+[I 2026-04-27T06:18:25.907]   YOLOX_TABLE_STRUCTURE_HTTP_ENDPOINT             SET TO DEFAULT: http://localhost:8006/v1/infer
+[I 2026-04-27T06:18:25.907]   YOLOX_TABLE_STRUCTURE_INFER_PROTOCOL            SET TO DEFAULT: http
+[I 2026-04-27T06:18:25.907]   OCR_HTTP_ENDPOINT                               SET TO DEFAULT: http://localhost:8009/v1/infer
+[I 2026-04-27T06:18:25.907]   OCR_INFER_PROTOCOL                              SET TO DEFAULT: http
+[I 2026-04-27T06:18:25.907]   All 4 NIM HTTP endpoints are set in os.environ ✓
+[I 2026-04-27T06:18:25.907]   Environment injection complete. run_pipeline() will inherit these.
+[I 2026-04-27T06:18:25.907] ══════════════════════════════════════════════════════════════════════
+[I 2026-04-27T06:18:25.907] FILE DISCOVERY  →  folder: Docs/
+[I 2026-04-27T06:18:25.907]   Formats: *.pdf, *.docx, *.pptx, *.jpeg, *.jpg, *.png
+[I 2026-04-27T06:18:25.908]   *.pdf        → 9 file(s)
+[I 2026-04-27T06:18:25.908]   *.jpeg       → 2 file(s)
+[I 2026-04-27T06:18:25.908]   *.jpg        → 2 file(s)
+[I 2026-04-27T06:18:25.909]   *.png        → 1 file(s)
+[I 2026-04-27T06:18:25.909]   ─── Total: 14 file(s) ───
+[I 2026-04-27T06:18:25.909]   › Docs/Ascent_of_Open.pdf  (4.30 MB)
+[I 2026-04-27T06:18:25.909]   › Docs/DOC-20260407-WA0009..pdf  (0.10 MB)
+[I 2026-04-27T06:18:25.909]   › Docs/Driving.jpg  (0.02 MB)
+[I 2026-04-27T06:18:25.909]   › Docs/Infinity-Ensure-Brochure.pdf  (0.69 MB)
+[I 2026-04-27T06:18:25.909]   › Docs/Oxford.pdf  (3.99 MB)
+[I 2026-04-27T06:18:25.909]   › Docs/PK0016.pdf  (0.32 MB)
+[I 2026-04-27T06:18:25.909]   › Docs/Screenshot (1).png  (0.09 MB)
+[I 2026-04-27T06:18:25.909]   › Docs/Singapore_NID_B 1.jpeg  (0.16 MB)
+[I 2026-04-27T06:18:25.909]   › Docs/Singapore_NID_F 1.jpeg  (0.17 MB)
+[I 2026-04-27T06:18:25.909]   › Docs/california-drivers-license-small 1 1.jpg  (0.04 MB)
+[I 2026-04-27T06:18:25.909]   › Docs/invoice-0-4.pdf  (0.06 MB)
+[I 2026-04-27T06:18:25.909]   › Docs/minion-tech.pdf  (10.54 MB)
+[I 2026-04-27T06:18:25.909]   › Docs/multimodal_test.pdf  (0.13 MB)
+[I 2026-04-27T06:18:25.909]   › Docs/policy-2.pdf  (0.83 MB)
+[I 2026-04-27T06:18:25.910] ══════════════════════════════════════════════════════════════════════
+[I 2026-04-27T06:18:25.910] PIPELINE INITIALISATION
+[I 2026-04-27T06:18:25.910] ══════════════════════════════════════════════════════════════════════
+2026-04-27 06:19:02.815666165 [W:onnxruntime:Default, device_discovery.cc:132 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename ""5620e0c7-8062-4dce-aeb7-520c7ef76171"" dit not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+
+[I 2026-04-27T06:19:04.624] Detected 32 logical cores via psutil.
+[I 2026-04-27T06:19:04.624] Detected 16 physical cores via psutil.
+[I 2026-04-27T06:19:04.624] Detected 8 cores via os.sched_getaffinity.
+[I 2026-04-27T06:19:04.624] Raw CPU limit determined: 8.00 (Method: sched_affinity)
+[I 2026-04-27T06:19:04.625] Effective CPU core limit determined: 8.00 (Method: sched_affinity)
+[I 2026-04-27T06:19:04.724] PHASE START : Pipeline subprocess start
+[I 2026-04-27T06:19:04.724] Launching pipeline in Python subprocess using multiprocessing.
+[I 2026-04-27T06:19:04.735] Pipeline subprocess started (PID=64638)
+[I 2026-04-27T06:19:04.735] PHASE END   : Pipeline subprocess start  →  0.011s
+[I 2026-04-27T06:19:04.735]   Pipeline process launched. Waiting for port 7671 (max 90s)...
+[I 2026-04-27T06:19:04.735]   Waiting for pipeline port 7671 to be ready (max 90s)...
+[I 2026-04-27T06:19:18.750]   Port 7671 is accepting connections ✓
+[I 2026-04-27T06:19:23.752]   NvIngestClient connected  →  localhost:7671 ✓
+[I 2026-04-27T06:19:23.752] ══════════════════════════════════════════════════════════════════════
+[I 2026-04-27T06:19:23.752] NIM HEALTH CHECK — verifying all 4 NIM endpoints
+[I 2026-04-27T06:19:23.752] ══════════════════════════════════════════════════════════════════════
+[W 2026-04-27T06:19:23.773]   ✗  page-elements (8000)  →  HTTP 404  (NIM may not be ready)
+[W 2026-04-27T06:19:23.789]   ✗  graphic-elements (8003)  →  HTTP 000  (NIM may not be ready)
+[W 2026-04-27T06:19:23.803]   ✗  table-structure (8006)  →  HTTP 000  (NIM may not be ready)
+[W 2026-04-27T06:19:23.818]   ✗  ocr (8009)  →  HTTP 000  (NIM may not be ready)
+[W 2026-04-27T06:19:23.818]   One or more NIMs did not respond — extraction for those modalities will fall back
+[W 2026-04-27T06:19:23.818]   Proceeding anyway — check docker ps and docker logs if results are empty
+[I 2026-04-27T06:19:23.973] ══════════════════════════════════════════════════════════════════════
+[I 2026-04-27T06:19:23.973] SANITY CHECK (text-only)  →  Docs/Ascent_of_Open.pdf
+[I 2026-04-27T06:19:23.973] ══════════════════════════════════════════════════════════════════════
+[I 2026-04-27T06:19:23.974] PHASE START : Text-only extraction
+Processing:   0%|                                                                       | 0/1 [00:00<?, ?doc/s][I 2026-04-27T06:19:24.051] Starting batch processing for 1 jobs with batch size 32.
+Processing: 100%|███████████████████████████████████████████████████████████████| 1/1 [00:31<00:00, 31.30s/doc][I 2026-04-27T06:19:55.348] Batch processing finished. Success: 1, Failures: 0. Total accounted for: 1/1
+Processing: 100%|███████████████████████████████████████████████████████████████| 1/1 [00:31<00:00, 31.30s/doc]
+[I 2026-04-27T06:19:55.348] PHASE END   : Text-only extraction  →  31.375s
+[I 2026-04-27T06:19:55.348]   Results  : 1
+[I 2026-04-27T06:19:55.348]   Failures : 0
+ in, nurture and suppor...nce is a technology company working to make research more efficient. We invest 
+[I 2026-04-27T06:19:55.349]   SANITY CHECK PASSED ✓
+[I 2026-04-27T06:19:55.349] ══════════════════════════════════════════════════════════════════════
+[I 2026-04-27T06:19:55.349] BATCH INGEST  →  14 file(s)
+[I 2026-04-27T06:19:55.349]   Collection : multimodal_docs
+[I 2026-04-27T06:19:55.349]   Milvus URI : milvus.db
+[I 2026-04-27T06:19:55.349]   Embedder   : dense_dim=2048  tokenizer=intfloat/e5-large-unsupervised
+[I 2026-04-27T06:19:55.349] ══════════════════════════════════════════════════════════════════════
+[I 2026-04-27T06:19:55.349]   [1/14] Ingesting: Ascent_of_Open.pdf
+[I 2026-04-27T06:19:55.400] Starting batch processing for 1 jobs with batch size 32.
+[I 2026-04-27T06:20:10.575] Batch processing finished. Success: 0, Failures: 1. Total accounted for: 1/1
+[W 2026-04-27T06:20:10.575] Job was not completely successful. 0 out of 1 records completed successfully. Uploading successful results to vector database.
+[W 2026-04-27T06:20:10.575]     FAILURE [0] in Ascent_of_Open.pdf: ('1:Docs/Ascent_of_Open.pdf', '[]: failed\nFailed to process the message.\n↪ Event that caused this failure: annotation::5a368d8e-08d7-429f-a0e8-5b7a9ac3b060 -> Error in on_data: extract_primitives_fr
+[I 2026-04-27T06:20:10.575]     Ascent_of_Open.pdf → results=0  failures=1  time=15.226s
+[I 2026-04-27T06:20:10.576]   ── doc wall time: 15.226s ──
+[I 2026-04-27T06:20:10.576]   [2/14] Ingesting: DOC-20260407-WA0009..pdf
+[I 2026-04-27T06:20:10.582] Starting batch processing for 1 jobs with batch size 32.
+[I 2026-04-27T06:20:17.672] Batch processing finished. Success: 0, Failures: 1. Total accounted for: 1/1
+[W 2026-04-27T06:20:17.672] Job was not completely successful. 0 out of 1 records completed successfully. Uploading successful results to vector database.
+[W 2026-04-27T06:20:17.672]     FAILURE [0] in DOC-20260407-WA0009..pdf: ('2:Docs/DOC-20260407-WA0009..pdf', '[]: failed\nFailed to process the message.\n↪ Event that caused this failure: annotation::ea7c4449-a103-4a30-928c-daf24ba2e585 -> Error in on_data: extract_primiti
+[I 2026-04-27T06:20:17.672]     DOC-20260407-WA0009..pdf → results=0  failures=1  time=7.096s
+[I 2026-04-27T06:20:17.672]   ── doc wall time: 7.097s ──
+[I 2026-04-27T06:20:17.672]   [3/14] Ingesting: Driving.jpg
+[I 2026-04-27T06:20:17.820] Starting batch processing for 1 jobs with batch size 32.
+[I 2026-04-27T06:20:24.908] Batch processing finished. Success: 0, Failures: 1. Total accounted for: 1/1
+[W 2026-04-27T06:20:24.908] Job was not completely successful. 0 out of 1 records completed successfully. Uploading successful results to vector database.
+[W 2026-04-27T06:20:24.908]     FAILURE [0] in Driving.jpg: ('3:Docs/Driving.jpg', "[]: failed\nFailed to process the message.\n↪ Event that caused this failure: annotation::896e8eb5-9aa9-4f54-8aca-37c7fdb97fb7 -> Error in on_data: extract_primitives_from_imag
+[I 2026-04-27T06:20:24.908]     Driving.jpg → results=0  failures=1  time=7.236s
+[I 2026-04-27T06:20:24.908]   ── doc wall time: 7.236s ──
+[I 2026-04-27T06:20:24.908]   [4/14] Ingesting: Infinity-Ensure-Brochure.pdf
+[I 2026-04-27T06:20:24.917] Starting batch processing for 1 jobs with batch size 32.
+[I 2026-04-27T06:20:40.023] Batch processing finished. Success: 0, Failures: 1. Total accounted for: 1/1
+[W 2026-04-27T06:20:40.023] Job was not completely successful. 0 out of 1 records completed successfully. Uploading successful results to vector database.
+[W 2026-04-27T06:20:40.023]     FAILURE [0] in Infinity-Ensure-Brochure.pdf: ('4:Docs/Infinity-Ensure-Brochure.pdf', '[]: failed\nFailed to process the message.\n↪ Event that caused this failure: annotation::de073afb-0577-46c1-a9b2-9e882e9d4129 -> Error in on_data: extract_pri
+[I 2026-04-27T06:20:40.023]     Infinity-Ensure-Brochure.pdf → results=0  failures=1  time=15.115s
+[I 2026-04-27T06:20:40.023]   ── doc wall time: 15.115s ──
+[I 2026-04-27T06:20:40.023]   [5/14] Ingesting: Oxford.pdf
+[I 2026-04-27T06:20:40.063] Starting batch processing for 1 jobs with batch size 32.
+[I 2026-04-27T06:21:43.224] Batch processing finished. Success: 0, Failures: 1. Total accounted for: 1/1
+[W 2026-04-27T06:21:43.224] Job was not completely successful. 0 out of 1 records completed successfully. Uploading successful results to vector database.
+[W 2026-04-27T06:21:43.224]     FAILURE [0] in Oxford.pdf: ('5:Docs/Oxford.pdf', '[]: failed\nFailed to process the message.\n↪ Event that caused this failure: annotation::0f302379-7006-456a-82ff-6454b0b9b51d -> Error in on_data: extract_primitives_from_pdf: 
+[I 2026-04-27T06:21:43.224]     Oxford.pdf → results=0  failures=1  time=63.201s
+[I 2026-04-27T06:21:43.225]   ── doc wall time: 63.201s ──
+[I 2026-04-27T06:21:43.225]   [6/14] Ingesting: PK0016.pdf
+[I 2026-04-27T06:21:43.234] Starting batch processing for 1 jobs with batch size 32.
+[I 2026-04-27T06:21:58.332] Batch processing finished. Success: 0, Failures: 1. Total accounted for: 1/1
+[W 2026-04-27T06:21:58.332] Job was not completely successful. 0 out of 1 records completed successfully. Uploading successful results to vector database.
+[W 2026-04-27T06:21:58.332]     FAILURE [0] in PK0016.pdf: ('6:Docs/PK0016.pdf', '[]: failed\nFailed to process the message.\n↪ Event that caused this failure: annotation::5fb6a11a-6e8f-4c87-91b4-175b62bece8e -> Error in on_data: extract_primitives_from_pdf: 
+[I 2026-04-27T06:21:58.332]     PK0016.pdf → results=0  failures=1  time=15.107s
+[I 2026-04-27T06:21:58.332]   ── doc wall time: 15.108s ──
+[I 2026-04-27T06:21:58.333]   [7/14] Ingesting: Screenshot (1).png
+[I 2026-04-27T06:21:58.373] Starting batch processing for 1 jobs with batch size 32.
+[I 2026-04-27T06:22:01.461] Batch processing finished. Success: 0, Failures: 1. Total accounted for: 1/1
+[W 2026-04-27T06:22:01.461] Job was not completely successful. 0 out of 1 records completed successfully. Uploading successful results to vector database.
+[W 2026-04-27T06:22:01.461]     FAILURE [0] in Screenshot (1).png: ('7:Docs/Screenshot (1).png', "[]: failed\nFailed to process the message.\n↪ Event that caused this failure: annotation::77b18a5f-08b1-4ec9-afd1-21795725e852 -> Error in on_data: extract_primitives_fr
+[I 2026-04-27T06:22:01.461]     Screenshot (1).png → results=0  failures=1  time=3.129s
+[I 2026-04-27T06:22:01.461]   ── doc wall time: 3.129s ──
+[I 2026-04-27T06:22:01.461]   [8/14] Ingesting: Singapore_NID_B 1.jpeg
+[I 2026-04-27T06:22:01.467] Starting batch processing for 1 jobs with batch size 32.
+[I 2026-04-27T06:22:04.557] Batch processing finished. Success: 0, Failures: 1. Total accounted for: 1/1
+[W 2026-04-27T06:22:04.557] Job was not completely successful. 0 out of 1 records completed successfully. Uploading successful results to vector database.
+[W 2026-04-27T06:22:04.557]     FAILURE [0] in Singapore_NID_B 1.jpeg: ('8:Docs/Singapore_NID_B 1.jpeg', "[]: failed\nFailed to process the message.\n↪ Event that caused this failure: annotation::8ac5fa40-69d1-4ba6-8d9e-d60f8acf3512 -> Error in on_data: extract_primitive
+[I 2026-04-27T06:22:04.557]     Singapore_NID_B 1.jpeg → results=0  failures=1  time=3.096s
+[I 2026-04-27T06:22:04.557]   ── doc wall time: 3.096s ──
+[I 2026-04-27T06:22:04.557]   [9/14] Ingesting: Singapore_NID_F 1.jpeg
+[I 2026-04-27T06:22:04.563] Starting batch processing for 1 jobs with batch size 32.
+[I 2026-04-27T06:22:07.654] Batch processing finished. Success: 0, Failures: 1. Total accounted for: 1/1
+[W 2026-04-27T06:22:07.654] Job was not completely successful. 0 out of 1 records completed successfully. Uploading successful results to vector database.
+[W 2026-04-27T06:22:07.654]     FAILURE [0] in Singapore_NID_F 1.jpeg: ('9:Docs/Singapore_NID_F 1.jpeg', "[]: failed\nFailed to process the message.\n↪ Event that caused this failure: annotation::acc296c8-d089-4615-adbb-32d5bdb32412 -> Error in on_data: extract_primitive
+[I 2026-04-27T06:22:07.654]     Singapore_NID_F 1.jpeg → results=0  failures=1  time=3.097s
+[I 2026-04-27T06:22:07.654]   ── doc wall time: 3.097s ──
+[I 2026-04-27T06:22:07.654]   [10/14] Ingesting: california-drivers-license-small 1 1.jpg
+[I 2026-04-27T06:22:07.659] Starting batch processing for 1 jobs with batch size 32.
+[I 2026-04-27T06:22:10.747] Batch processing finished. Success: 0, Failures: 1. Total accounted for: 1/1
+[W 2026-04-27T06:22:10.747] Job was not completely successful. 0 out of 1 records completed successfully. Uploading successful results to vector database.
+[W 2026-04-27T06:22:10.747]     FAILURE [0] in california-drivers-license-small 1 1.jpg: ('10:Docs/california-drivers-license-small 1 1.jpg', "[]: failed\nFailed to process the message.\n↪ Event that caused this failure: annotation::1b73111a-5c33-4159-8f55-c8ec747f275e -> Error in on_data
+[I 2026-04-27T06:22:10.747]     california-drivers-license-small 1 1.jpg → results=0  failures=1  time=3.093s
+[I 2026-04-27T06:22:10.747]   ── doc wall time: 3.093s ──
+[I 2026-04-27T06:22:10.747]   [11/14] Ingesting: invoice-0-4.pdf
+[I 2026-04-27T06:22:10.754] Starting batch processing for 1 jobs with batch size 32.
+[I 2026-04-27T06:22:13.842] Batch processing finished. Success: 0, Failures: 1. Total accounted for: 1/1
+[W 2026-04-27T06:22:13.842] Job was not completely successful. 0 out of 1 records completed successfully. Uploading successful results to vector database.
+[W 2026-04-27T06:22:13.842]     FAILURE [0] in invoice-0-4.pdf: ('11:Docs/invoice-0-4.pdf', '[]: failed\nFailed to process the message.\n↪ Event that caused this failure: annotation::f9263a31-b42a-4391-94ad-463ae23618c2 -> Error in on_data: extract_primitives_from
+[I 2026-04-27T06:22:13.842]     invoice-0-4.pdf → results=0  failures=1  time=3.095s
+[I 2026-04-27T06:22:13.842]   ── doc wall time: 3.095s ──
+[I 2026-04-27T06:22:13.842]   [12/14] Ingesting: minion-tech.pdf
+[I 2026-04-27T06:22:13.961] Starting batch processing for 1 jobs with batch size 32.
+[I 2026-04-27T06:22:29.324] Batch processing finished. Success: 0, Failures: 1. Total accounted for: 1/1
+[W 2026-04-27T06:22:29.324] Job was not completely successful. 0 out of 1 records completed successfully. Uploading successful results to vector database.
+[W 2026-04-27T06:22:29.324]     FAILURE [0] in minion-tech.pdf: ('12:Docs/minion-tech.pdf', '[]: failed\nFailed to process the message.\n↪ Event that caused this failure: annotation::5b7996c9-9ac2-4a9e-806c-71de450f4518 -> Error in on_data: extract_primitives_from
+[I 2026-04-27T06:22:29.324]     minion-tech.pdf → results=0  failures=1  time=15.482s
+[I 2026-04-27T06:22:29.324]   ── doc wall time: 15.482s ──
+[I 2026-04-27T06:22:29.324]   [13/14] Ingesting: multimodal_test.pdf
+[I 2026-04-27T06:22:29.331] Starting batch processing for 1 jobs with batch size 32.
+[I 2026-04-27T06:22:36.421] Batch processing finished. Success: 0, Failures: 1. Total accounted for: 1/1
+[W 2026-04-27T06:22:36.421] Job was not completely successful. 0 out of 1 records completed successfully. Uploading successful results to vector database.
+[W 2026-04-27T06:22:36.421]     FAILURE [0] in multimodal_test.pdf: ('13:Docs/multimodal_test.pdf', '[]: failed\nFailed to process the message.\n↪ Event that caused this failure: annotation::174cb14b-4fd0-46a5-b42e-d2c0d601d905 -> Error in on_data: extract_primitives_
+[I 2026-04-27T06:22:36.421]     multimodal_test.pdf → results=0  failures=1  time=7.097s
+[I 2026-04-27T06:22:36.421]   ── doc wall time: 7.097s ──
+[I 2026-04-27T06:22:36.421]   [14/14] Ingesting: policy-2.pdf
+[I 2026-04-27T06:22:36.434] Starting batch processing for 1 jobs with batch size 32.
+[I 2026-04-27T06:22:51.544] Batch processing finished. Success: 0, Failures: 1. Total accounted for: 1/1
+[W 2026-04-27T06:22:51.544] Job was not completely successful. 0 out of 1 records completed successfully. Uploading successful results to vector database.
+[W 2026-04-27T06:22:51.544]     FAILURE [0] in policy-2.pdf: ('14:Docs/policy-2.pdf', '[]: failed\nFailed to process the message.\n↪ Event that caused this failure: annotation::9d8531be-df82-4cf4-87b1-280135ddc66e -> Error in on_data: extract_primitives_from_pd
+[I 2026-04-27T06:22:51.544]     policy-2.pdf → results=0  failures=1  time=15.123s
+[I 2026-04-27T06:22:51.544]   ── doc wall time: 15.123s ──
+[I 2026-04-27T06:22:51.544] ══════════════════════════════════════════════════════════════════════
+[I 2026-04-27T06:22:51.545] BATCH INGEST SUMMARY
+[I 2026-04-27T06:22:51.545]   Total documents  : 14
+[I 2026-04-27T06:22:51.545]   Successful       : 0
+[I 2026-04-27T06:22:51.545]   Total failures   : 14
+[I 2026-04-27T06:22:51.545]   Total batch time : 176.195s
+[I 2026-04-27T06:22:51.545]   Avg per document : 12.585s
+[I 2026-04-27T06:22:51.545] ══════════════════════════════════════════════════════════════════════
+[I 2026-04-27T06:22:51.545] ══════════════════════════════════════════════════════════════════════
+[I 2026-04-27T06:22:51.545] MILVUS VERIFICATION — checking entity count before RAG queries
+[I 2026-04-27T06:22:53.222]   Collection 'multimodal_docs' has 23 entities
+[I 2026-04-27T06:22:53.223]   Milvus is populated ✓
+[I 2026-04-27T06:22:53.227] ══════════════════════════════════════════════════════════════════════
+[I 2026-04-27T06:22:53.227] RAG RETRIEVAL + LLM INFERENCE  →  5 question(s)
+[I 2026-04-27T06:22:53.227] ══════════════════════════════════════════════════════════════════════
+[I 2026-04-27T06:22:53.246]   Q1: Why did economics and physics become early movers in open access adoption?...
+[I 2026-04-27T06:22:59.303] HTTP Request: POST https://integrate.api.nvidia.com/v1/embeddings "HTTP/1.1 200 OK"
+[I 2026-04-27T06:22:59.454]     Retrieval: 6.208s  |  chunks: 10
+[I 2026-04-27T06:23:13.961] HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+[I 2026-04-27T06:23:13.970]     LLM: 14.515s  |  tokens=3766  tok/s=4.5
+[I 2026-04-27T06:23:13.970]     Answer preview: The answer is not in the context. The provided context is about "Regulatory Guidelines for Telecommunication of Medical ...
+[I 2026-04-27T06:23:14.970]   Q2: How did arXiv influence scholarly communication in physics?...
+[I 2026-04-27T06:23:15.218] HTTP Request: POST https://integrate.api.nvidia.com/v1/embeddings "HTTP/1.1 200 OK"
+[I 2026-04-27T06:23:15.345]     Retrieval: 0.374s  |  chunks: 10
+[I 2026-04-27T06:23:17.491] HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+[I 2026-04-27T06:23:17.492]     LLM: 2.146s  |  tokens=3397  tok/s=38.7
+[I 2026-04-27T06:23:17.492]     Answer preview: The answer is not in the context. The context provided is related to regulatory guidelines for telecommunication of medi...
+[I 2026-04-27T06:23:18.492]   Q3: Why did life sciences move more toward open access journals and APC models?...
+[I 2026-04-27T06:23:18.793] HTTP Request: POST https://integrate.api.nvidia.com/v1/embeddings "HTTP/1.1 200 OK"
+[I 2026-04-27T06:23:19.007]     Retrieval: 0.514s  |  chunks: 10
+[I 2026-04-27T06:23:20.704] HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+[I 2026-04-27T06:23:20.704]     LLM: 1.697s  |  tokens=3824  tok/s=34.2
+[I 2026-04-27T06:23:20.704]     Answer preview: The answer to the question "Why did life sciences move more toward open access journals and APC models?" is not in the p...
+[I 2026-04-27T06:23:21.705]   Q4: What does the report mean by successive waves of open access innovation?...
+[I 2026-04-27T06:23:21.940] HTTP Request: POST https://integrate.api.nvidia.com/v1/embeddings "HTTP/1.1 200 OK"
+[I 2026-04-27T06:23:22.065]     Retrieval: 0.360s  |  chunks: 10
+[I 2026-04-27T06:23:36.006] HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+[I 2026-04-27T06:23:36.006]     LLM: 13.941s  |  tokens=3868  tok/s=4.5
+[I 2026-04-27T06:23:36.006]     Answer preview: The context provided does not mention "successive waves of open access innovation". The text appears to be a medical doc...
+[I 2026-04-27T06:23:37.007]   Q5: How does the report connect open access, open data, and reproducibility?...
+[I 2026-04-27T06:23:37.237] HTTP Request: POST https://integrate.api.nvidia.com/v1/embeddings "HTTP/1.1 200 OK"
+[I 2026-04-27T06:23:37.367]     Retrieval: 0.360s  |  chunks: 10
+[I 2026-04-27T06:23:38.611] HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+[I 2026-04-27T06:23:38.612]     LLM: 1.244s  |  tokens=4197  tok/s=33.8
+[I 2026-04-27T06:23:38.612]     Answer preview: The answer is not in the context. The provided context appears to be a medical policy document outlining documentation s...
+[I 2026-04-27T06:23:39.612]   Answers saved → Outputs/answers_20260427_061825.json
+[I 2026-04-27T06:23:39.613]   Metrics saved → Outputs/metrics_20260427_061825.json
+[I 2026-04-27T06:23:39.613] ══════════════════════════════════════════════════════════════════════
+[I 2026-04-27T06:23:39.613] FINAL RUN SUMMARY
+[I 2026-04-27T06:23:39.613] ══════════════════════════════════════════════════════════════════════
+[I 2026-04-27T06:23:39.613]   Run ID                  : 20260427_061825
+[I 2026-04-27T06:23:39.613]   Pipeline init time      : 0.011s
+[I 2026-04-27T06:23:39.613]   Sanity check time       : 31.375s
+[I 2026-04-27T06:23:39.613]   Total batch ingest time : 176.195s
+[I 2026-04-27T06:23:39.614]   Total documents         : 14
+[I 2026-04-27T06:23:39.614]   Successful documents    : 0
+[I 2026-04-27T06:23:39.614]   Avg ingest per doc      : 12.585s
+[I 2026-04-27T06:23:39.614]   Total wall time         : 207.581s
+[I 2026-04-27T06:23:39.614] ----------------------------------------------------------------------
+[I 2026-04-27T06:23:39.614]   Log file     → Outputs/pipeline_run_20260427_061825.log
+[I 2026-04-27T06:23:39.614]   Metrics JSON → Outputs/metrics_20260427_061825.json
+[I 2026-04-27T06:23:39.614]   Answers JSON → Outputs/answers_20260427_061825.json
+[I 2026-04-27T06:23:39.614] ══════════════════════════════════════════════════════════════════════
+[I 2026-04-27T06:23:39.614]   Total wall clock time : 313.708s
+[I 2026-04-27T06:23:39.614]   PIPELINE COMPLETED SUCCESSFULLY
+[I 2026-04-27T06:23:39.614] ══════════════════════════════════════════════════════════════════════
+Killed subprocess group 64638
+E20260427 06:23:40.702111 78818 server.cpp:47] [SERVER][BlockLock][milvus] Process exit
