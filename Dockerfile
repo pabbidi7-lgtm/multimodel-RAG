@@ -1,4 +1,4 @@
-import logging, os, time
+import logging, os, time, glob
 
 import pymilvus
 pymilvus.connections.disconnect("default")
@@ -15,6 +15,24 @@ from nv_ingest_client.util.process_json_files import ingest_json_results_to_blob
 # ------------ CONFIG ------------
 assert "NVIDIA_API_KEY" in os.environ, "Set env: export NVIDIA_API_KEY=..."
 NVIDIA_API_KEY = os.environ["NVIDIA_API_KEY"]
+
+DOCS_FOLDER    = "Docs"
+FILE_PATTERNS  = ["*.pdf", "*.docx", "*.pptx", "*.jpeg", "*.jpg", "*.png"]
+
+# Collect all files from Docs/ folder
+all_files = []
+for pat in FILE_PATTERNS:
+    all_files.extend(glob.glob(os.path.join(DOCS_FOLDER, pat)))
+all_files = sorted(set(all_files))
+
+print(f"Found {len(all_files)} file(s) in {DOCS_FOLDER}/:")
+for f in all_files:
+    print(f"  {f}")
+
+assert all_files, f"No files found in {DOCS_FOLDER}/ matching {FILE_PATTERNS}"
+
+# Use first file for sanity check (Step 1)
+first_file = all_files[0]
 
 # ------------ START PIPELINE ------------
 config = PipelineCreationSchema()
@@ -41,13 +59,13 @@ collection_name = "multimodal_docs"
 sparse = False
 
 # =========================================================================
-#  STEP 1: Basic text extraction (sanity check)
+#  STEP 1: Basic text extraction (sanity check on first file only)
 # =========================================================================
-print("\n=== STEP 1: Basic text extraction ===")
+print(f"\n=== STEP 1: Basic text extraction (sanity check: {first_file}) ===")
 
 ingestor = (
     Ingestor(client=client)
-    .files("Docs/Ascent_of_Open.pdf")
+    .files(first_file)
     .extract(
         extract_text=True,
         extract_tables=False,
@@ -79,57 +97,95 @@ elif results:
 
     # =========================================================================
     #  STEP 2: Full extraction + split + caption + embed + vdb upload
+    #          Runs on ALL files in Docs/ folder
     # =========================================================================
-    print("\n=== STEP 2: Full pipeline (extract + split + caption + embed + vdb) ===")
+    print(f"\n=== STEP 2: Full pipeline on all {len(all_files)} file(s) ===")
 
-    ingestor_full = (
-        Ingestor(client=client)
-        .files("Docs/Ascent_of_Open.pdf")
-        .extract(
-            extract_text=True,
-            extract_tables=True,
-            extract_charts=True,
-            extract_images=True,
-            extract_infographics=True,
-            table_output_format="markdown",
-            text_depth="page",
-        )
-        .split(
-            tokenizer="intfloat/e5-large-unsupervised",
-            chunk_size=512,
-            chunk_overlap=50,
-        )
-        .caption(
-            endpoint_url="https://integrate.api.nvidia.com/v1/chat/completions",
-            model_name="nvidia/llama-3.1-nemotron-nano-vl-8b-v1",
-            api_key=NVIDIA_API_KEY,
-        )
-        .embed()
-        .vdb_upload(
-            collection_name=collection_name,
-            milvus_uri=milvus_uri,
-            sparse=sparse,
-            dense_dim=2048
-        )
-    )
+    total_ok      = 0
+    total_failed  = 0
+    total_skipped = 0
 
-    print("Starting full ingestion...")
-    t0 = time.time()
-    results_full, failures_full = ingestor_full.ingest(show_progress=True, return_failures=True)
-    t1 = time.time()
-    print(f"Total time: {t1 - t0:.2f} seconds")
-    print(f"\nResults:  {len(results_full)}")
-    print(f"Failures: {len(failures_full)}")
+    # Image-only extensions produce no embeddable text without OCR NIM
+    IMAGE_ONLY_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".tiff"}
 
-    if failures_full:
-        print("\n=== STEP 2 FAILURES ===")
-        for i, f in enumerate(failures_full):
-            print(f"--- [{i}] ---\n{f}")
-    else:
-        print("\n=== STEP 2 SUCCEEDED ===")
-        print(f"Embeddings stored in Milvus Lite: {milvus_uri}")
-        print(f"Collection: {collection_name}")
+    for idx, filepath in enumerate(all_files, 1):
+        ext = os.path.splitext(filepath)[1].lower()
 
+        # Skip pure image files — they raise ValueError (no embeddings) without OCR NIM
+        if ext in IMAGE_ONLY_EXTS:
+            print(f"\n[{idx}/{len(all_files)}] SKIPPED (image file, needs OCR NIM): {filepath}")
+            total_skipped += 1
+            continue
+
+        print(f"\n[{idx}/{len(all_files)}] Ingesting: {filepath}")
+
+        ingestor_full = (
+            Ingestor(client=client)
+            .files(filepath)
+            .extract(
+                extract_text=True,
+                extract_tables=True,
+                extract_charts=True,
+                extract_images=True,
+                extract_infographics=True,
+                table_output_format="markdown",
+                text_depth="page",
+            )
+            .split(
+                tokenizer="intfloat/e5-large-unsupervised",
+                chunk_size=512,
+                chunk_overlap=50,
+            )
+            .caption(
+                endpoint_url="https://integrate.api.nvidia.com/v1/chat/completions",
+                model_name="nvidia/llama-3.1-nemotron-nano-vl-8b-v1",
+                api_key=NVIDIA_API_KEY,
+            )
+            .embed()
+            .vdb_upload(
+                collection_name=collection_name,
+                milvus_uri=milvus_uri,
+                sparse=sparse,
+                dense_dim=2048
+            )
+        )
+
+        t0 = time.time()
+        try:
+            results_full, failures_full = ingestor_full.ingest(
+                show_progress=True, return_failures=True
+            )
+            t1 = time.time()
+            print(f"  Time: {t1 - t0:.2f}s  Results: {len(results_full)}  Failures: {len(failures_full)}")
+
+            if failures_full:
+                print(f"  FAILURES for {filepath}:")
+                for i, f in enumerate(failures_full):
+                    print(f"    [{i}] {str(f)[:300]}")
+                total_failed += 1
+            else:
+                print(f"  OK — embeddings stored in Milvus.")
+                total_ok += 1
+
+        except ValueError as ve:
+            # No embeddable content (e.g. image-only PDF with no text layer)
+            t1 = time.time()
+            print(f"  SKIPPED ({t1-t0:.2f}s) — no embeddable content: {ve}")
+            total_skipped += 1
+        except Exception as e:
+            t1 = time.time()
+            print(f"  ERROR ({t1-t0:.2f}s): {e}")
+            total_failed += 1
+
+    print(f"\n=== STEP 2 COMPLETE ===")
+    print(f"  Total files : {len(all_files)}")
+    print(f"  OK          : {total_ok}")
+    print(f"  Skipped     : {total_skipped}  (image files without OCR NIM)")
+    print(f"  Failed      : {total_failed}")
+    print(f"  Milvus URI  : {milvus_uri}")
+    print(f"  Collection  : {collection_name}")
+
+    if total_ok > 0:
         # =========================================================================
         #  STEP 3: Retrieval + RAG queries
         # =========================================================================
@@ -142,7 +198,7 @@ elif results:
             "Why did economics and physics become early movers in open access adoption?",
             "How did arXiv influence scholarly communication in physics?",
             "Why did life sciences move more toward open access journals and APC models instead of preprints?",
-            "What does the report mean by saying open access has grown through “successive waves of innovation”?",
+            "What does the report mean by saying open access has grown through \"successive waves of innovation\"?",
             "How does the report connect open access, open data, and reproducibility?",
         ]
 
@@ -185,6 +241,8 @@ Answer:"""
             print(f"\nQ: {q}")
             print(f"A: {completion.choices[0].message.content}")
             print("-" * 60)
+    else:
+        print("\nNo files succeeded — skipping RAG queries.")
 
 else:
     print("\nNo results and no failures — unexpected state.")
