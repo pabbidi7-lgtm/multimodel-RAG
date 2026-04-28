@@ -1,248 +1,137 @@
-import logging, os, time, glob
-
-import pymilvus
-pymilvus.connections.disconnect("default")
-
-
-from nv_ingest.framework.orchestration.ray.util.pipeline.pipeline_runners import (
-    run_pipeline,
-    PipelineCreationSchema
-)
-from nv_ingest_client.client import Ingestor, NvIngestClient
-from nv_ingest_api.util.message_brokers.simple_message_broker import SimpleClient
-from nv_ingest_client.util.process_json_files import ingest_json_results_to_blob
-
-# ------------ CONFIG ------------
-assert "NVIDIA_API_KEY" in os.environ, "Set env: export NVIDIA_API_KEY=..."
-NVIDIA_API_KEY = os.environ["NVIDIA_API_KEY"]
-
-DOCS_FOLDER    = "Docs"
-FILE_PATTERNS  = ["*.pdf", "*.docx", "*.pptx", "*.jpeg", "*.jpg", "*.png"]
-
-# Collect all files from Docs/ folder
-all_files = []
-for pat in FILE_PATTERNS:
-    all_files.extend(glob.glob(os.path.join(DOCS_FOLDER, pat)))
-all_files = sorted(set(all_files))
-
-print(f"Found {len(all_files)} file(s) in {DOCS_FOLDER}/:")
-for f in all_files:
-    print(f"  {f}")
-
-assert all_files, f"No files found in {DOCS_FOLDER}/ matching {FILE_PATTERNS}"
-
-# Use first file for sanity check (Step 1)
-first_file = all_files[0]
-
-# ------------ START PIPELINE ------------
-config = PipelineCreationSchema()
-
-run_pipeline(
-    config,
-    block=False,
-    disable_dynamic_scaling=True,
-    run_in_subprocess=True
-)
-
-print("Waiting for pipeline to initialize...")
-time.sleep(15)
-print("Pipeline ready. Connecting client...")
-
-client = NvIngestClient(
-    message_client_allocator=SimpleClient,
-    message_client_port=7671,
-    message_client_hostname="localhost"
-)
-
-milvus_uri = "milvus.db"
-collection_name = "multimodal_docs"
-sparse = False
-
-# =========================================================================
-#  STEP 1: Basic text extraction (sanity check on first file only)
-# =========================================================================
-print(f"\n=== STEP 1: Basic text extraction (sanity check: {first_file}) ===")
-
-ingestor = (
-    Ingestor(client=client)
-    .files(first_file)
-    .extract(
-        extract_text=True,
-        extract_tables=False,
-        extract_charts=False,
-        extract_images=False,
-        extract_infographics=False,
-        text_depth="page",
-    )
-)
-
-print("Starting ingestion...")
-t0 = time.time()
-results, failures = ingestor.ingest(show_progress=True, return_failures=True)
-t1 = time.time()
-print(f"Total time: {t1 - t0:.2f} seconds")
-print(f"\nResults:  {len(results)}")
-print(f"Failures: {len(failures)}")
-
-if failures:
-    print("\n=== STEP 1 FAILURES ===")
-    for i, f in enumerate(failures):
-        print(f"--- [{i}] ---\n{f}")
-    print("\nFix Step 1 before proceeding.")
-
-elif results:
-    print("\n=== STEP 1 SUCCEEDED ===")
-    blob = ingest_json_results_to_blob(results[0])
-    print(blob[:500] + "..." if len(blob) > 500 else blob)
-
-    # =========================================================================
-    #  STEP 2: Full extraction + split + caption + embed + vdb upload
-    #          Runs on ALL files in Docs/ folder
-    # =========================================================================
-    print(f"\n=== STEP 2: Full pipeline on all {len(all_files)} file(s) ===")
-
-    total_ok      = 0
-    total_failed  = 0
-    total_skipped = 0
-
-    # Image-only extensions produce no embeddable text without OCR NIM
-    IMAGE_ONLY_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".tiff"}
-
-    for idx, filepath in enumerate(all_files, 1):
-        ext = os.path.splitext(filepath)[1].lower()
-
-        # Skip pure image files — they raise ValueError (no embeddings) without OCR NIM
-        if ext in IMAGE_ONLY_EXTS:
-            print(f"\n[{idx}/{len(all_files)}] SKIPPED (image file, needs OCR NIM): {filepath}")
-            total_skipped += 1
-            continue
-
-        print(f"\n[{idx}/{len(all_files)}] Ingesting: {filepath}")
-
-        ingestor_full = (
-            Ingestor(client=client)
-            .files(filepath)
-            .extract(
-                extract_text=True,
-                extract_tables=True,
-                extract_charts=True,
-                extract_images=True,
-                extract_infographics=True,
-                table_output_format="markdown",
-                text_depth="page",
-            )
-            .split(
-                tokenizer="intfloat/e5-large-unsupervised",
-                chunk_size=512,
-                chunk_overlap=50,
-            )
-            .caption(
-                endpoint_url="https://integrate.api.nvidia.com/v1/chat/completions",
-                model_name="nvidia/llama-3.1-nemotron-nano-vl-8b-v1",
-                api_key=NVIDIA_API_KEY,
-            )
-            .embed()
-            .vdb_upload(
-                collection_name=collection_name,
-                milvus_uri=milvus_uri,
-                sparse=sparse,
-                dense_dim=2048
-            )
-        )
-
-        t0 = time.time()
-        try:
-            results_full, failures_full = ingestor_full.ingest(
-                show_progress=True, return_failures=True
-            )
-            t1 = time.time()
-            print(f"  Time: {t1 - t0:.2f}s  Results: {len(results_full)}  Failures: {len(failures_full)}")
-
-            if failures_full:
-                print(f"  FAILURES for {filepath}:")
-                for i, f in enumerate(failures_full):
-                    print(f"    [{i}] {str(f)[:300]}")
-                total_failed += 1
-            else:
-                print(f"  OK — embeddings stored in Milvus.")
-                total_ok += 1
-
-        except ValueError as ve:
-            # No embeddable content (e.g. image-only PDF with no text layer)
-            t1 = time.time()
-            print(f"  SKIPPED ({t1-t0:.2f}s) — no embeddable content: {ve}")
-            total_skipped += 1
-        except Exception as e:
-            t1 = time.time()
-            print(f"  ERROR ({t1-t0:.2f}s): {e}")
-            total_failed += 1
-
-    print(f"\n=== STEP 2 COMPLETE ===")
-    print(f"  Total files : {len(all_files)}")
-    print(f"  OK          : {total_ok}")
-    print(f"  Skipped     : {total_skipped}  (image files without OCR NIM)")
-    print(f"  Failed      : {total_failed}")
-    print(f"  Milvus URI  : {milvus_uri}")
-    print(f"  Collection  : {collection_name}")
-
-    if total_ok > 0:
-        # =========================================================================
-        #  STEP 3: Retrieval + RAG queries
-        # =========================================================================
-        print("\n=== STEP 3: Querying ingested documents ===")
-
-        from openai import OpenAI
-        from nv_ingest_client.util.milvus import nvingest_retrieval
-
-        queries = [
-            "Why did economics and physics become early movers in open access adoption?",
-            "How did arXiv influence scholarly communication in physics?",
-            "Why did life sciences move more toward open access journals and APC models instead of preprints?",
-            "What does the report mean by saying open access has grown through \"successive waves of innovation\"?",
-            "How does the report connect open access, open data, and reproducibility?",
-        ]
-
-        llm_client = OpenAI(
-            base_url="https://integrate.api.nvidia.com/v1",
-            api_key=NVIDIA_API_KEY
-        )
-
-        print("=" * 60)
-        for q in queries:
-            retrieved_docs = nvingest_retrieval(
-                [q],
-                collection_name,
-                milvus_uri=milvus_uri,
-                hybrid=sparse,
-                top_k=10,
-            )
-
-            if retrieved_docs and retrieved_docs[0]:
-                context = "\n\n".join([doc["entity"]["text"] for doc in retrieved_docs[0]])
-            else:
-                context = "No relevant content found."
-
-            prompt = f"""Use the following context to answer the question.
-If the answer is not in the context, say so.
-
-Context:
-{context}
-
-Question: {q}
-Answer:"""
-
-            completion = llm_client.chat.completions.create(
-                model="meta/llama-3.3-70b-instruct",
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=1024,
-                temperature=0.7,
-            )
-
-            print(f"\nQ: {q}")
-            print(f"A: {completion.choices[0].message.content}")
-            print("-" * 60)
-    else:
-        print("\nNo files succeeded — skipping RAG queries.")
-
-else:
-    print("\nNo results and no failures — unexpected state.")
+[
+  {
+    "question": "At the Effective Time of the merger, how are Public Common Units, Sponsor Owned Units, and the Series B / Series C Preferred Units treated differently, and what exactly does PDI receive in exchange for its ownership interest in Merger Sub?",
+    "answer": "This information is not found in the ingested documents.",
+    "metrics": {
+      "question": "At the Effective Time of the merger, how are Public Common Units, Sponsor Owned Units, and the Series B / Series C Preferred Units treated differently, and what exactly does PDI receive in exchange for its ownership interest in Merger Sub?",
+      "retrieval_sec": 2.0229,
+      "chunks_returned": 10,
+      "top_k": 10,
+      "llm_sec": 17.8149,
+      "prompt_tokens": 4734,
+      "completion_tokens": 12,
+      "total_tokens": 4746,
+      "tokens_per_sec": 0.67
+    }
+  },
+  {
+    "question": "Why does the guide say that making figures accessible is not just about avoiding red and green, and what alternative cues should be used so that meaning is not communicated only through colour?",
+    "answer": "This information is not found in the ingested documents.",
+    "metrics": {
+      "question": "Why does the guide say that making figures accessible is not just about avoiding red and green, and what alternative cues should be used so that meaning is not communicated only through colour?",
+      "retrieval_sec": 0.5519,
+      "chunks_returned": 10,
+      "top_k": 10,
+      "llm_sec": 11.6638,
+      "prompt_tokens": 4721,
+      "completion_tokens": 12,
+      "total_tokens": 4733,
+      "tokens_per_sec": 1.03
+    }
+  },
+  {
+    "question": "For an inpatient History and Physical (H&P), what are the timing rules for completion, when can an H&P completed within the previous 30 days be reused, and what update is required on the day of a procedure involving anesthesia?",
+    "answer": "For an inpatient History and Physical (H&P), the timing rules for completion are as follows: \n1. An H&P must be completed no more than 30 days before or within 24 hours of admission, but prior to surgery or a procedure requiring anesthesia.\n2. If a complete H&P has been recorded within thirty (30) days prior to the patient’s admission, a durable legible copy of the H&P done by a member of the UTMC Medical Staff may be used in the medical record for the current admission.\n3. On the day of a procedure involving anesthesia, if the H&P was not written on that day, it must be updated by documenting no significant changes or listing changes in the patient’s condition following the patient’s examination.",
+    "metrics": {
+      "question": "For an inpatient History and Physical (H&P), what are the timing rules for completion, when can an H&P completed within the previous 30 days be reused, and what update is required on the day of a procedure involving anesthesia?",
+      "retrieval_sec": 0.3612,
+      "chunks_returned": 10,
+      "top_k": 10,
+      "llm_sec": 13.3033,
+      "prompt_tokens": 4751,
+      "completion_tokens": 154,
+      "total_tokens": 4905,
+      "tokens_per_sec": 11.58
+    }
+  },
+  {
+    "question": "Reconstruct the approval path on January 5, 2023: what did the Special Committee approve and recommend, what did the GP Board then authorize, and why did the transaction already have enough support to satisfy the required unitholder approval threshold?",
+    "answer": "This information is not found in the ingested documents.",
+    "metrics": {
+      "question": "Reconstruct the approval path on January 5, 2023: what did the Special Committee approve and recommend, what did the GP Board then authorize, and why did the transaction already have enough support to satisfy the required unitholder approval threshold?",
+      "retrieval_sec": 0.3453,
+      "chunks_returned": 10,
+      "top_k": 10,
+      "llm_sec": 0.9048,
+      "prompt_tokens": 4476,
+      "completion_tokens": 12,
+      "total_tokens": 4488,
+      "tokens_per_sec": 13.26
+    }
+  },
+  {
+    "question": "What are the WCAG minimum contrast requirements recommended in the guide for non-text graphical objects, normal text, and large text, and how does the guide define large text?",
+    "answer": "This information is not found in the ingested documents.",
+    "metrics": {
+      "question": "What are the WCAG minimum contrast requirements recommended in the guide for non-text graphical objects, normal text, and large text, and how does the guide define large text?",
+      "retrieval_sec": 0.3626,
+      "chunks_returned": 10,
+      "top_k": 10,
+      "llm_sec": 1.6276,
+      "prompt_tokens": 4720,
+      "completion_tokens": 12,
+      "total_tokens": 4732,
+      "tokens_per_sec": 7.37
+    }
+  },
+  {
+    "question": "What are the documentation and authentication requirements for telephone and verbal orders, and which communication methods for orders are explicitly not permitted versus allowed only in secure/encrypted form?",
+    "answer": "According to the context, the documentation and authentication requirements for telephone and verbal orders are as follows: \n\n1. All telephone and verbal orders must be authenticated by a provider as soon as possible but no later than 30 days after discharge.\n2. Any telephone or verbal order that is reduced to paper must be dated and timed, include the name of the ordering physician or APP, the name of the person writing or taking the order, and the method the order was received (telephone or verbal).\n\nThe context explicitly states that:\n- Texting orders is not permitted per CMS and TJC regulations/standards.\n- UTMC does not permit using email to transmit orders.\n\nHowever, it is allowed to:\n- Communicate with other healthcare team members via secure and encrypted text through Athena Text.\n- Communicate with other healthcare team members via secure and encrypted email, but only through the official University of Toledo email.",
+    "metrics": {
+      "question": "What are the documentation and authentication requirements for telephone and verbal orders, and which communication methods for orders are explicitly not permitted versus allowed only in secure/encrypted form?",
+      "retrieval_sec": 0.3669,
+      "chunks_returned": 10,
+      "top_k": 10,
+      "llm_sec": 3.2453,
+      "prompt_tokens": 4589,
+      "completion_tokens": 182,
+      "total_tokens": 4771,
+      "tokens_per_sec": 56.08
+    }
+  },
+  {
+    "question": "What role did Evercore and Barclays play in the transaction materials, which dated discussion materials are specifically referenced, and where can an interested holder of Public Common Units inspect those reports or opinions?",
+    "answer": "This information is not found in the ingested documents.",
+    "metrics": {
+      "question": "What role did Evercore and Barclays play in the transaction materials, which dated discussion materials are specifically referenced, and where can an interested holder of Public Common Units inspect those reports or opinions?",
+      "retrieval_sec": 0.4394,
+      "chunks_returned": 10,
+      "top_k": 10,
+      "llm_sec": 1.0821,
+      "prompt_tokens": 4593,
+      "completion_tokens": 12,
+      "total_tokens": 4605,
+      "tokens_per_sec": 11.09
+    }
+  },
+  {
+    "question": "What must be included in a discharge summary, who is ultimately responsible for completing it, what is the recommended completion timeline, and in what situation may a final progress note be used instead of a full discharge summary?",
+    "answer": "A discharge summary must include the following: \n1. Reason for hospitalization \n2. Provisional, primary, secondary, and final diagnoses \n3. Significant findings \n4. Procedures and treatment provided \n5. Patient’s discharge condition \n6. Patient and family instructions (as appropriate) \n7. For deceased patients, a death note with date and time of death and a brief summary of the hospital stay.\n\nThe physician discharging the patient is ultimately responsible for completion of the discharge summary. \n\nIt is recommended that the discharge summary be completed at the time the patient is discharged, but no later than 24 hours post-discharge. \n\nA final progress note may be substituted for the discharge summary in the case of patients with problems of a minor nature who required less than a 48-hour period of hospitalization. The final progress note should include any instructions given to the patient and/or family.",
+    "metrics": {
+      "question": "What must be included in a discharge summary, who is ultimately responsible for completing it, what is the recommended completion timeline, and in what situation may a final progress note be used instead of a full discharge summary?",
+      "retrieval_sec": 0.3643,
+      "chunks_returned": 10,
+      "top_k": 10,
+      "llm_sec": 7.625,
+      "prompt_tokens": 4817,
+      "completion_tokens": 181,
+      "total_tokens": 4998,
+      "tokens_per_sec": 23.74
+    }
+  },
+  {
+    "question": "What must be included in a discharge summary, who is ultimately responsible for completing it, what is the recommended completion timeline, and in what situation may a final progress note be used instead of a full discharge summary?",
+    "answer": "A discharge summary must include the reason for hospitalization, provisional and final diagnoses, significant findings, procedures and treatment provided, patient's discharge condition, and patient and family instructions (Section 3364-87-42, v). The physician discharging the patient is ultimately responsible for completion of the discharge summary (Section 3364-87-42, v). It is recommended that the discharge summary be completed at the time the patient is discharged, but no later than 24 hours post-discharge (Section 3364-87-42, vi). A final progress note may be substituted for the discharge summary in the case of patients with problems of a minor nature who required less than a 48-hour period of hospitalization (Section 3364-87-42, vi).",
+    "metrics": {
+      "question": "What must be included in a discharge summary, who is ultimately responsible for completing it, what is the recommended completion timeline, and in what situation may a final progress note be used instead of a full discharge summary?",
+      "retrieval_sec": 0.377,
+      "chunks_returned": 10,
+      "top_k": 10,
+      "llm_sec": 3.0684,
+      "prompt_tokens": 4817,
+      "completion_tokens": 159,
+      "total_tokens": 4976,
+      "tokens_per_sec": 51.82
+    }
+  }
+]
