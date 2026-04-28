@@ -1,178 +1,242 @@
-2026-04-28 06:49:12  INFO      ========================================================================
-2026-04-28 06:49:12  INFO      NV-INGEST 25.9.0  LIBRARY MODE  v6  |  hybrid BM25+semantic + rerank
-2026-04-28 06:49:12  INFO        2026-04-28 06:49:12  |  Python 3.12.13
-2026-04-28 06:49:12  INFO        INTERACTIVE question mode
-2026-04-28 06:49:12  INFO        Collection -> multimodal_docs_20260428_064912
-2026-04-28 06:49:12  INFO        Log        -> /home/clouduser01/jaswanth/Outputs/pipeline_run_20260428_064912.log
-2026-04-28 06:49:12  INFO      ========================================================================
-2026-04-28 06:49:57  INFO      Collected 3 question(s).
-2026-04-28 06:49:57  INFO      ========================================================================
-2026-04-28 06:49:57  INFO      ENVIRONMENT SETUP
-2026-04-28 06:49:57  INFO      ========================================================================
-2026-04-28 06:49:57  INFO        NVIDIA_API_KEY : ********jMJZNZ
-2026-04-28 06:49:57  INFO        YOLOX_HTTP_ENDPOINT                             -> http://localhost:8000/v1/infer
-2026-04-28 06:49:57  INFO        YOLOX_INFER_PROTOCOL                            -> http
-2026-04-28 06:49:57  INFO        YOLOX_GRAPHIC_ELEMENTS_HTTP_ENDPOINT            -> http://localhost:8003/v1/infer
-2026-04-28 06:49:57  INFO        YOLOX_GRAPHIC_ELEMENTS_INFER_PROTOCOL           -> http
-2026-04-28 06:49:57  INFO        YOLOX_TABLE_STRUCTURE_HTTP_ENDPOINT             -> http://localhost:8006/v1/infer
-2026-04-28 06:49:57  INFO        YOLOX_TABLE_STRUCTURE_INFER_PROTOCOL            -> http
-2026-04-28 06:49:57  INFO        OCR_HTTP_ENDPOINT                               -> http://localhost:8009/v1/infer
-2026-04-28 06:49:57  INFO        OCR_INFER_PROTOCOL                              -> http
-2026-04-28 06:49:57  INFO        Collection     : multimodal_docs_20260428_064912
-2026-04-28 06:49:57  INFO        Retrieval      : sparse=True  top_k=30  rerank_k=8
-2026-04-28 06:49:57  INFO        Reranker       : nvidia/llama-nemotron-rerank-1b-v2
-2026-04-28 06:49:57  INFO      ========================================================================
-2026-04-28 06:49:57  INFO      FILE DISCOVERY  ->  Docs/
-2026-04-28 06:49:57  INFO        *.pdf        -> 10
-2026-04-28 06:49:57  INFO        *.jpeg       -> 2
-2026-04-28 06:49:57  INFO        *.jpg        -> 2
-2026-04-28 06:49:57  INFO        *.png        -> 1
-2026-04-28 06:49:57  INFO        Total: 15 file(s)
-2026-04-28 06:49:57  INFO          Ascent_of_Open.pdf                                   4.30 MB
-2026-04-28 06:49:57  INFO          DOC-20260407-WA0009..pdf                             0.10 MB
-2026-04-28 06:49:57  INFO          Driving.jpg                                          0.02 MB
-2026-04-28 06:49:57  INFO          Infinity-Ensure-Brochure.pdf                         0.69 MB
-2026-04-28 06:49:57  INFO          Oxford.pdf                                           3.99 MB
-2026-04-28 06:49:57  INFO          PK0016.pdf                                           0.32 MB
-2026-04-28 06:49:57  INFO          Screenshot (1).png                                   0.09 MB
-2026-04-28 06:49:57  INFO          Singapore_NID_B 1.jpeg                               0.16 MB
-2026-04-28 06:49:57  INFO          Singapore_NID_F 1.jpeg                               0.17 MB
-2026-04-28 06:49:57  INFO          california-drivers-license-small 1 1.jpg             0.04 MB
-2026-04-28 06:49:57  INFO          invoice-0-4.pdf                                      0.06 MB
-2026-04-28 06:49:57  INFO          merger_agreement 1.pdf                               0.55 MB
-2026-04-28 06:49:57  INFO          minion-tech.pdf                                      10.54 MB
-2026-04-28 06:49:57  INFO          multimodal_test.pdf                                  0.13 MB
-2026-04-28 06:49:57  INFO          policy-2.pdf                                         0.83 MB
-2026-04-28 06:49:57  INFO      ========================================================================
-2026-04-28 06:49:57  INFO      PIPELINE INIT
-2026-04-28 06:49:57  INFO      ========================================================================
-2026-04-28 06:50:05  INFO      >> Pipeline subprocess
-2026-04-28 06:50:05  INFO        Polling port 7671 (max 90s)...
-2026-04-28 06:50:19  INFO        Port 7671 ready.
-2026-04-28 06:50:24  INFO      << Pipeline subprocess  19.029s
-2026-04-28 06:50:24  INFO        NvIngestClient connected -> localhost:7671
-2026-04-28 06:50:24  INFO      ========================================================================
-2026-04-28 06:50:24  INFO      NIM HEALTH CHECK
-2026-04-28 06:50:24  INFO      ========================================================================
-2026-04-28 06:50:24  INFO        FAIL  page_elements          port 8000  HTTP 404
-2026-04-28 06:50:24  WARNING          Ready path returned 404 on port 8000. Try /v1/health or /health/ready
-2026-04-28 06:50:24  INFO        FAIL  graphic_elements       port 8003  HTTP 000
-2026-04-28 06:50:24  WARNING          Fix: docker compose --profile yolox-graphic-elements up -d
-2026-04-28 06:50:24  INFO        FAIL  table_structure        port 8006  HTTP 000
-2026-04-28 06:50:24  WARNING          Fix: docker compose --profile yolox-table-structure up -d
-2026-04-28 06:50:24  INFO        FAIL  ocr                    port 8009  HTTP 000
-2026-04-28 06:50:24  WARNING          Fix: docker compose --profile ocr up -d
-2026-04-28 06:50:24  INFO        0/4 NIMs healthy. Text-only fallback will be used where needed.
-2026-04-28 06:50:24  INFO      ========================================================================
-2026-04-28 06:50:24  INFO      SANITY CHECK (text-only) -> Ascent_of_Open.pdf
-2026-04-28 06:50:24  INFO      ========================================================================
-2026-04-28 06:50:24  INFO      >> Sanity
-2026-04-28 06:50:56  INFO      << Sanity  31.321s
-2026-04-28 06:50:56  INFO        Results: 1  Failures: 0
-2026-04-28 06:50:56  INFO        Preview: Digital Research Reports
- The Ascent of Open Access
- An analysis of the Open Access landscape since the turn of the millennium
- Daniel W Hook, Ian Calvert and Mark Hahnel
- JANUARY 2019 Digital Science...
-2026-04-28 06:50:56  INFO        SANITY PASSED
-2026-04-28 06:50:56  INFO      Collection 'multimodal_docs_20260428_064912' does not exist yet.
-2026-04-28 06:50:56  INFO      ========================================================================
-2026-04-28 06:50:56  INFO      BATCH INGEST  ->  15 files  |  TEXT-ONLY + HYBRID BM25
-2026-04-28 06:50:56  INFO        Collection: multimodal_docs_20260428_064912  Milvus: milvus.db
-2026-04-28 06:50:56  INFO        Chunk: 512 tok  overlap: 50  sparse=True
-2026-04-28 06:50:56  INFO      ========================================================================
-2026-04-28 06:50:56  INFO        [1/15]  Ascent_of_Open.pdf  [TEXT+HYBRID]  sparse=True
-2026-04-28 06:51:06  INFO          results=1  failures=0  9.310s
-2026-04-28 06:51:06  INFO        -- wall: 9.310s --
-2026-04-28 06:51:06  INFO        [2/15]  DOC-20260407-WA0009..pdf  [TEXT+HYBRID]  sparse=True
-2026-04-28 06:51:14  INFO          results=1  failures=0  8.285s
-2026-04-28 06:51:14  INFO        -- wall: 8.285s --
-2026-04-28 06:51:14  INFO        [3/15]  Driving.jpg  [SKIPPED - image file, OCR NIM not running]
-2026-04-28 06:51:14  INFO        -- wall: 0.000s --
-2026-04-28 06:51:14  INFO        [4/15]  Infinity-Ensure-Brochure.pdf  [TEXT+HYBRID]  sparse=True
-2026-04-28 06:51:23  INFO          results=1  failures=0  8.825s
-2026-04-28 06:51:23  INFO        -- wall: 8.825s --
-2026-04-28 06:51:23  INFO        [5/15]  Oxford.pdf  [TEXT+HYBRID]  sparse=True
-2026-04-28 06:51:32  INFO          results=1  failures=0  9.436s
-2026-04-28 06:51:32  INFO        -- wall: 9.437s --
-2026-04-28 06:51:32  INFO        [6/15]  PK0016.pdf  [TEXT+HYBRID]  sparse=True
-2026-04-28 06:51:41  INFO          results=1  failures=0  9.152s
-2026-04-28 06:51:41  INFO        -- wall: 9.152s --
-2026-04-28 06:51:41  INFO        [7/15]  Screenshot (1).png  [SKIPPED - image file, OCR NIM not running]
-2026-04-28 06:51:41  INFO        -- wall: 0.000s --
-2026-04-28 06:51:41  INFO        [8/15]  Singapore_NID_B 1.jpeg  [SKIPPED - image file, OCR NIM not running]
-2026-04-28 06:51:41  INFO        -- wall: 0.000s --
-2026-04-28 06:51:41  INFO        [9/15]  Singapore_NID_F 1.jpeg  [SKIPPED - image file, OCR NIM not running]
-2026-04-28 06:51:41  INFO        -- wall: 0.000s --
-2026-04-28 06:51:41  INFO        [10/15]  california-drivers-license-small 1 1.jpg  [SKIPPED - image file, OCR NIM not running]
-2026-04-28 06:51:41  INFO        -- wall: 0.000s --
-2026-04-28 06:51:41  INFO        [11/15]  invoice-0-4.pdf  [TEXT+HYBRID]  sparse=True
-2026-04-28 06:51:51  INFO          results=1  failures=0  9.118s
-2026-04-28 06:51:51  INFO        -- wall: 9.118s --
-2026-04-28 06:51:51  INFO        [12/15]  merger_agreement 1.pdf  [TEXT+HYBRID]  sparse=True
-2026-04-28 06:51:59  INFO          results=1  failures=0  8.841s
-2026-04-28 06:51:59  INFO        -- wall: 8.842s --
-2026-04-28 06:51:59  INFO        [13/15]  minion-tech.pdf  [TEXT+HYBRID]  sparse=True
-2026-04-28 06:52:08  INFO          results=1  failures=0  9.031s
-2026-04-28 06:52:08  INFO        -- wall: 9.031s --
-2026-04-28 06:52:08  INFO        [14/15]  multimodal_test.pdf  [TEXT+HYBRID]  sparse=True
-2026-04-28 06:52:13  INFO          results=1  failures=0  4.420s
-2026-04-28 06:52:13  INFO        -- wall: 4.421s --
-2026-04-28 06:52:13  INFO        [15/15]  policy-2.pdf  [TEXT+HYBRID]  sparse=True
-2026-04-28 06:52:22  INFO          results=1  failures=0  8.751s
-2026-04-28 06:52:22  INFO        -- wall: 8.752s --
-2026-04-28 06:52:22  INFO      ========================================================================
-2026-04-28 06:52:22  INFO      BATCH SUMMARY
-2026-04-28 06:52:22  INFO        Total: 15  OK: 10  Skipped: 5  Failed: 0
-2026-04-28 06:52:22  INFO        Total: 85.175s  Avg: 5.678s
-2026-04-28 06:52:22  INFO      ========================================================================
-2026-04-28 06:52:22  INFO      ========================================================================
-2026-04-28 06:52:22  INFO      MILVUS VERIFICATION
-2026-04-28 06:52:22  INFO        'multimodal_docs_20260428_064912': 12 total chunks
-2026-04-28 06:52:22  INFO        Hybrid retrieval: TOP_K=30 -> rerank -> keep 8
-2026-04-28 06:52:22  INFO      ========================================================================
-2026-04-28 06:52:22  INFO      RAG QUERIES  ->  3 question(s)
-2026-04-28 06:52:22  INFO        Collection : multimodal_docs_20260428_064912
-2026-04-28 06:52:22  INFO        Mode       : hybrid BM25+semantic (sparse=True)
-2026-04-28 06:52:22  INFO        Fetch      : TOP_K_RETRIEVE=30 -> rerank -> RERANK_K=8
-2026-04-28 06:52:22  INFO        LLM        : meta/llama-3.3-70b-instruct
-2026-04-28 06:52:22  INFO      ========================================================================
-2026-04-28 06:52:22  INFO        Q1: At the Effective Time of the merger, how are Public Common Units, Sponsor Owned Units, and the Series B / Series C Preferred Units treated differently, and what exactly does PDI receive in exchange for its ownership interest in Merger Sub
-2026-04-28 06:52:23  INFO          Retrieval : 1.610s  |  candidates: 12/30  mode: hybrid BM25+semantic
-2026-04-28 06:52:24  INFO          Reranking : 0.794s  |  kept 8/12  top_score=-22.7500  mode=api
-2026-04-28 06:52:24  INFO          Sources   : policy-2.pdf', 'source_location': '', 'source_type': 'PDF', 'collection_id': '', 'date_created': '2019-03-06T16:38:27', 'last_modified': '2019-03-08T14:27:37', 'summary': '', 'partition_id': -1, 'access_level': -1, 'custom_content': None}
-2026-04-28 06:52:30  INFO          LLM       : 6.066s  |  tokens=4012  tok/s=25.4
-2026-04-28 06:52:30  INFO          Answer    : The provided excerpts appear to be from a medical policy document, specifically "3364-87-42 – Documentation Standards." The document outlines the standards for medical record documentation, including who is authorized to make entries, the c
-2026-04-28 06:52:31  INFO        Q2: hat are the WCAG minimum contrast requirements recommended in the guide for non-text graphical objects, normal text, and large text, and how does the guide define large text?
-2026-04-28 06:52:31  INFO          Retrieval : 0.402s  |  candidates: 12/30  mode: hybrid BM25+semantic
-2026-04-28 06:52:31  INFO          Reranking : 0.301s  |  kept 8/12  top_score=-18.2031  mode=api
-2026-04-28 06:52:31  INFO          Sources   : policy-2.pdf', 'source_location': '', 'source_type': 'PDF', 'collection_id': '', 'date_created': '2019-03-06T16:38:27', 'last_modified': '2019-03-08T14:27:37', 'summary': '', 'partition_id': -1, 'access_level': -1, 'custom_content': None}
-2026-04-28 06:52:39  INFO          LLM       : 7.665s  |  tokens=3955  tok/s=25.4
-2026-04-28 06:52:39  INFO          Answer    : The provided text does not mention the WCAG minimum contrast requirements. It appears to be a policy document related to medical record-keeping and documentation standards at the University of Toledo Medical Center (UTMC).   However, accord
-2026-04-28 06:52:39  INFO        Q3: What must be included in a discharge summary, who is ultimately responsible for completing it, what is the recommended completion timeline, and in what situation may a final progress note be used instead of a full discharge summary?
-2026-04-28 06:52:40  INFO          Retrieval : 0.422s  |  candidates: 12/30  mode: hybrid BM25+semantic
-2026-04-28 06:52:40  INFO          Reranking : 0.401s  |  kept 8/12  top_score=10.2422  mode=api
-2026-04-28 06:52:40  INFO          Sources   : policy-2.pdf', 'source_location': '', 'source_type': 'PDF', 'collection_id': '', 'date_created': '2019-03-06T16:38:27', 'last_modified': '2019-03-08T14:27:37', 'summary': '', 'partition_id': -1, 'access_level': -1, 'custom_content': None}
-2026-04-28 06:52:44  INFO          LLM       : 4.223s  |  tokens=4204  tok/s=42.6
-2026-04-28 06:52:44  INFO          Answer    : A discharge summary must include the following information: 1. Reason for hospitalization 2. Provisional, primary, secondary, and final diagnoses 3. Significant findings 4. Procedures and treatment provided 5. Patient's discharge condition 
-2026-04-28 06:52:45  INFO      ------------------------------------------------------------------------
-2026-04-28 06:52:45  INFO        Q      Retrieve   Rerank      LLM   Tokens   Tok/s  Score
-2026-04-28 06:52:45  INFO      ------------------------------------------------------------------------
-2026-04-28 06:52:45  INFO        Q1       1.610s   0.794s   6.066s     4012   25.4  -22.7500
-2026-04-28 06:52:45  INFO        Q2       0.402s   0.301s   7.665s     3955   25.4  -18.2031
-2026-04-28 06:52:45  INFO        Q3       0.422s   0.401s   4.223s     4204   42.6  10.2422
-2026-04-28 06:52:45  INFO      ------------------------------------------------------------------------
-2026-04-28 06:52:45  INFO        Answers -> Outputs/answers_20260428_064912.json
-2026-04-28 06:52:45  INFO        Metrics -> Outputs/metrics_20260428_064912.json
-2026-04-28 06:52:45  INFO      ========================================================================
-2026-04-28 06:52:45  INFO      FINAL SUMMARY
-2026-04-28 06:52:45  INFO      ========================================================================
-2026-04-28 06:52:45  INFO        Run ID   : 20260428_064912
-2026-04-28 06:52:45  INFO        Docs     : 15  OK=10  Skipped=5  Failed=0
-2026-04-28 06:52:45  INFO        Wall     : 213.4s  (init 19.0s + sanity 31.3s + batch 85.2s)
-2026-04-28 06:52:45  INFO        Retrieval: hybrid BM25+semantic  fetch=30  rerank_to=8  model=nvidia/llama-nemotron-rerank-1b-v2
-2026-04-28 06:52:45  INFO        Chunks   : 12
-2026-04-28 06:52:45  INFO        Log      -> Outputs/pipeline_run_20260428_064912.log
-2026-04-28 06:52:45  INFO        Metrics  -> Outputs/metrics_20260428_064912.json
-2026-04-28 06:52:45  INFO        Answers  -> Outputs/answers_20260428_064912.json
-2026-04-28 06:52:45  INFO      ========================================================================
+Yes — I can tell what is happening from your logs.
+Short answer
+This is not mainly a Milvus corruption issue and not mainly because the documents failed to ingest.
+The main problem is:
+
+The documents are ingesting successfully
+Retrieval is picking chunks from the wrong document
+All files are going into one shared collection
+You are not filtering retrieval by source document
+Your model is then answering based on the wrong context
+In one case, the model also adds outside knowledge / mild hallucination
+
+
+What the logs already prove
+1) The documents are ingesting
+Your logs clearly show these files were successfully processed and uploaded:
+
+Docs/Oxford.pdf → 435 elements inserted
+Docs/merger_agreement 1.pdf → 23 elements inserted
+Docs/policy-2.pdf → 23 elements inserted
+
+So those PDFs are ingested. The issue is not “document not ingested” for those three.
+Also the batch summary shows:
+
+Total files: 15
+OK: 10
+Skipped: 5
+Failed: 0
+
+That means the merger PDF and Oxford PDF were not skipped, and they were not failed. They were successfully embedded and uploaded.
+
+2) Why is it showing “medical document” for a merger/Oxford question?
+Because retrieval is returning chunks from policy-2.pdf instead of from:
+
+merger_agreement 1.pdf
+Oxford.pdf
+
+You already showed earlier metrics like this:
+
+top_sources = policy-2.pdf for the merger question
+top_sources = policy-2.pdf for the WCAG question
+
+That is the biggest clue.
+So the chain is:
+What is happening
+
+You ask a question about merger_agreement 1.pdf
+Milvus retrieval returns chunks from policy-2.pdf
+The LLM sees only those policy chunks
+So it says:
+“the provided context appears to be related to medical documentation…”
+
+That is actually the model honestly describing the wrong retrieved context.
+So the phrase “medical document” is not random.
+It means the retriever gave the LLM the wrong document chunks.
+
+Direct answers to your questions
+“Is this hallucination?”
+For the merger answer
+Mostly no hallucination.
+It is mainly a wrong-context retrieval problem.
+The model is saying:
+
+“I see medical policy context”
+“I do not see merger content”
+
+That is actually consistent with the context it got.
+For the WCAG answer
+Yes, partial hallucination / fallback knowledge is happening.
+Because it says:
+
+answer not in context
+then gives general WCAG knowledge anyway
+
+That means your prompt is not strict enough to force a clean “not found” only.
+So:
+
+Merger answer: mostly retrieval failure
+WCAG answer: retrieval failure + model using outside knowledge
+
+
+“Are the documents not ingesting?”
+No — for merger/Oxford/policy, they are ingesting
+The logs prove ingestion succeeded.
+But image-only files are not ingesting into useful text
+These were explicitly skipped:
+
+Driving.jpg
+Screenshot (1).png
+Singapore_NID_B 1.jpeg
+Singapore_NID_F 1.jpeg
+california-drivers-license-small 1 1.jpg
+
+So any question that depends on those image files will fail in the current setup unless OCR NIM is running.
+But this is not the reason your merger/Oxford questions failed, because those PDFs were ingested.
+
+“Any question related to non-ingested document?”
+For the 3 example questions you tested now:
+Merger question
+
+related to merger_agreement 1.pdf
+that file was ingested
+
+WCAG question
+
+related to Oxford.pdf
+that file was ingested
+
+Discharge summary question
+
+related to policy-2.pdf
+that file was ingested
+
+So these questions are not about non-ingested documents.
+
+“Before I was ingesting one PDF and asking 5 questions — it worked. Now 15 at a time, why broken?”
+This is the most important point.
+When you ingested only one PDF
+Milvus had only one document’s chunks to choose from.
+So:
+
+retrieval had no confusion
+every query was forced to match that one document
+answers looked correct
+
+Now you ingest 15 files into one collection
+Now retrieval has to choose from all document chunks together.
+That creates these problems:
+A. Cross-document contamination
+A question about one PDF may retrieve another PDF.
+That is exactly what happened:
+
+merger question → policy chunks
+WCAG question → policy chunks
+
+B. No source filtering
+You are querying one single collection:
+PythonCOLLECTION_NAME = "multimodal_docs"Show more lines
+and retrieving globally.
+So Milvus is not being told:
+
+“search only in merger_agreement 1.pdf”
+“search only in Oxford.pdf”
+
+Without source filtering, retrieval can return any chunk from any file.
+C. Dense retrieval may semantically confuse documents
+Because you are doing dense retrieval, queries can sometimes match generic language from the wrong document.
+For example:
+
+policy text is structured and explicit
+merger legal text is denser and more specific
+Oxford accessibility text may be split across pages and figure explanations
+
+Dense search can accidentally rank “wrong but semantically decent” policy chunks above the exact merger/Oxford chunk.
+D. Long multi-part questions are harder
+Your question style is moderate-hard and multi-part, e.g.:
+
+“how are X, Y, Z treated differently, and what does PDI receive…”
+
+That requires retrieving a chunk containing multiple related facts.
+If chunking or ranking misses that section, the wrong source wins.
+
+Is Milvus DB faulty?
+Probably not faulty in the sense of “broken database”
+Milvus is doing what you asked:
+
+storing all chunk embeddings
+retrieving nearest neighbors
+
+The problem is how the data is organized and queried, not that Milvus is damaged.
+But there is one important Milvus-related issue:
+You are probably reusing the same DB / same collection across runs
+Your logs show the same:
+
+milvus.db
+multimodal_docs
+
+If you are not clearing the collection before each fresh experiment, then:
+
+old chunks remain
+duplicate chunks remain
+previous runs accumulate
+retrieval quality can degrade
+
+So not “Milvus fault,” but collection contamination / stale data accumulation is very possible.
+
+Exact diagnosis from your case
+Why policy questions work
+Because the retriever is strongly hitting policy-2.pdf, and the policy questions are indeed about that file.
+So:
+
+correct file retrieved
+answer comes out correct
+
+Why merger/Oxford fail
+Because the retriever is incorrectly returning policy-2.pdf chunks for those questions.
+So:
+
+wrong file retrieved
+answer says “medical policy” or “not in context”
+or gives outside knowledge
+
+That is the root cause.
+
+So what is the actual problem?
+Main problem summary
+Your current multi-file setup has retrieval routing failure.
+Not mainly:
+
+not missing ingestion of merger/Oxford
+not pure hallucination
+not Milvus corruption
+
+Mainly:
+
+wrong-document retrieval
+all docs mixed in one collection
+no metadata/source filtering
+likely stale collection reuse
+prompt not strict enough to block outside knowledge
+
+
+Why did the discharge summary answer come correct?
+Because the retriever pulled the correct document (policy-2.pdf) for that question.
+So your pipeline is not completely broken.
+It is working when retrieval lands on the right source.
+That tells us:
+
+ingestion is okay
+embeddings are being stored
+Milvus is retrievable
+LLM answering works
+
+The weak part is document targeting in retrieval.
+
+Also note this important thing from your run
+You used:
+Shelltaskset -c 0-7 python pipeline.pyShow more lines
+That only restricts CPU affinity.
+It does not solve retrieval contamination.
+It only helps the pipeline run stably.
+So taskset fixed the execution/freezing issue, but not the multi-document retrieval quality problem.
