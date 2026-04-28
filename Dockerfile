@@ -1,464 +1,537 @@
-taskset -c 0-7 python pipelinecp.py --interactive
-[I 2026-04-27T06:43:10.347] Centralized logging configured (console only) console_level=INFO log_dir=none (NEMO_EVALUATOR_LOG_DIR not set) logger=nemo_evaluator.logging.utils
-2026-04-27 06:43:10  INFO      ========================================================================
-2026-04-27 06:43:10  INFO      NV-INGEST 25.9.0  LIBRARY MODE  v3
-2026-04-27 06:43:10  INFO        Started  : 2026-04-27 06:43:10
-2026-04-27 06:43:10  INFO        Python   : 3.12.13
-2026-04-27 06:43:10  INFO        Outputs  : /home/clouduser01/jaswanth/Outputs/
-2026-04-27 06:43:10  INFO        Log file : /home/clouduser01/jaswanth/Outputs/pipeline_run_20260427_064310.log
-2026-04-27 06:43:10  INFO        Mode     : INTERACTIVE
-2026-04-27 06:43:10  INFO      ========================================================================
+"""
+NV-Ingest 25.9.0 - Library Mode Pipeline  (v4)
+Target : A100 | Python 3.12
+"""
 
-========================================================================
-  INTERACTIVE QUESTION MODE -- Enter questions, blank line to finish
-========================================================================
+import logging, os, sys, time, json, glob, socket, subprocess, traceback
+from datetime import datetime
+from pathlib import Path
 
-  Q1: What cash consideration will each Public Common Unit receive at the effective time of the merger?
-  Q2: What are the signature requirements for every medical record entry under this documentation standards policy?
-  Q3: What percentage of the outstanding Common Units did DCP Midstream and the General Partner own when they delivered written consent approving the merger?
-  Q4: What key capabilities or features does Infinity Ensure provide for cloud governance and cost optimization?
-  Q5: Within how many days must ambulatory EMR documentation be complete after the patient encounter, and within how many days must the inpatient medical record be completed after discharge?
-  Q6: What business outcomes or savings are described in the brochure’s customer examples?
-  Q7: What does the policy say about texting medical orders and using email to transmit orders?
-  Q8: Which units or securities will remain outstanding and unaffected immediately following the merger?
-  Q9: What is Infinity Ensure, and what main problem does it aim to solve for cloud environments?
-  Q10: What happens to PDI’s ownership interest in Merger Sub at the effective time of the merger, and how is that amount determined?
-  Q11: What are the timing requirements for inpatient history and physicals (H&Ps), including updates on the day of a procedure requiring anesthesia?
-  Q12: How does the brochure describe Infinity Ensure’s governance capabilities in terms of checks, remediation, reporting, and access management?
-  Q13: Who are the filing persons listed in the Schedule 13E-3 transaction statement, and what role does Merger Sub play in the transaction?
-  Q14: According to the policy, what parts of the encounter may medical students document, and what must the physician still personally perform, review, or attest to?
-  Q15: What are the main categories of cloud risks or operational concerns that Infinity Ensure is designed to address?
-  Q16: What concrete outcomes are described in the customer examples for cloud portfolio optimization and compliance/cost optimization?
-  Q17: What information must be included in the immediate post-operative progress note, and by when must the detailed dictated procedure report be placed in the record?
-  Q18: What approvals or conditions were required from limited partners for the merger, and how was that requirement satisfied on January 5, 2023? [merger_agreement 1 | PDF]
-  Q19: 
-2026-04-27 06:51:31  INFO      Interactive mode: 18 question(s) collected.
-2026-04-27 06:51:31  INFO      ========================================================================
-2026-04-27 06:51:31  INFO      STEP 0 -- ENVIRONMENT INJECTION + VERIFICATION
-2026-04-27 06:51:31  INFO      ========================================================================
-2026-04-27 06:51:31  INFO        NVIDIA_API_KEY : ********jMJZNZ
-2026-04-27 06:51:31  INFO        YOLOX_HTTP_ENDPOINT                             -> injected: http://localhost:8000/v1/infer
-2026-04-27 06:51:31  INFO        YOLOX_INFER_PROTOCOL                            -> injected: http
-2026-04-27 06:51:31  INFO        YOLOX_GRAPHIC_ELEMENTS_HTTP_ENDPOINT            -> injected: http://localhost:8003/v1/infer
-2026-04-27 06:51:31  INFO        YOLOX_GRAPHIC_ELEMENTS_INFER_PROTOCOL           -> injected: http
-2026-04-27 06:51:31  INFO        YOLOX_TABLE_STRUCTURE_HTTP_ENDPOINT             -> injected: http://localhost:8006/v1/infer
-2026-04-27 06:51:31  INFO        YOLOX_TABLE_STRUCTURE_INFER_PROTOCOL            -> injected: http
-2026-04-27 06:51:31  INFO        OCR_HTTP_ENDPOINT                               -> injected: http://localhost:8009/v1/infer
-2026-04-27 06:51:31  INFO        OCR_INFER_PROTOCOL                              -> injected: http
-2026-04-27 06:51:31  INFO        All NIM env vars in os.environ -- subprocess will inherit them.
-2026-04-27 06:51:31  INFO      ========================================================================
-2026-04-27 06:51:31  INFO      FILE DISCOVERY  ->  folder: Docs/
-2026-04-27 06:51:31  INFO        *.pdf        -> 9 file(s)
-2026-04-27 06:51:31  INFO        *.jpeg       -> 2 file(s)
-2026-04-27 06:51:31  INFO        *.jpg        -> 2 file(s)
-2026-04-27 06:51:31  INFO        *.png        -> 1 file(s)
-2026-04-27 06:51:31  INFO        Total: 14 file(s)
-2026-04-27 06:51:31  INFO          Ascent_of_Open.pdf                                  4.30 MB
-2026-04-27 06:51:31  INFO          DOC-20260407-WA0009..pdf                            0.10 MB
-2026-04-27 06:51:31  INFO          Driving.jpg                                         0.02 MB
-2026-04-27 06:51:31  INFO          Infinity-Ensure-Brochure.pdf                        0.69 MB
-2026-04-27 06:51:31  INFO          Oxford.pdf                                          3.99 MB
-2026-04-27 06:51:31  INFO          PK0016.pdf                                          0.32 MB
-2026-04-27 06:51:31  INFO          Screenshot (1).png                                  0.09 MB
-2026-04-27 06:51:31  INFO          Singapore_NID_B 1.jpeg                              0.16 MB
-2026-04-27 06:51:31  INFO          Singapore_NID_F 1.jpeg                              0.17 MB
-2026-04-27 06:51:31  INFO          california-drivers-license-small 1 1.jpg            0.04 MB
-2026-04-27 06:51:31  INFO          invoice-0-4.pdf                                     0.06 MB
-2026-04-27 06:51:31  INFO          minion-tech.pdf                                     10.54 MB
-2026-04-27 06:51:31  INFO          multimodal_test.pdf                                 0.13 MB
-2026-04-27 06:51:31  INFO          policy-2.pdf                                        0.83 MB
-2026-04-27 06:51:31  INFO      ========================================================================
-2026-04-27 06:51:31  INFO      PIPELINE INITIALISATION
-2026-04-27 06:51:31  INFO      ========================================================================
-2026-04-27 06:51:38.624180731 [W:onnxruntime:Default, device_discovery.cc:132 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename ""5620e0c7-8062-4dce-aeb7-520c7ef76171"" dit not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+
-[I 2026-04-27T06:51:39.423] Detected 32 logical cores via psutil.
-[I 2026-04-27T06:51:39.423] Detected 16 physical cores via psutil.
-[I 2026-04-27T06:51:39.423] Detected 8 cores via os.sched_getaffinity.
-[I 2026-04-27T06:51:39.423] Raw CPU limit determined: 8.00 (Method: sched_affinity)
-[I 2026-04-27T06:51:39.424] Effective CPU core limit determined: 8.00 (Method: sched_affinity)
-2026-04-27 06:51:39  INFO      PHASE START : Pipeline subprocess
-[I 2026-04-27T06:51:39.476] Launching pipeline in Python subprocess using multiprocessing.
-[I 2026-04-27T06:51:39.487] Pipeline subprocess started (PID=106229)
-2026-04-27 06:51:39  INFO      PHASE END   : Pipeline subprocess  ->  0.011s
-2026-04-27 06:51:39  INFO        Polling port 7671 for pipeline readiness (max 90s)...
-2026-04-27 06:51:51  INFO        Port 7671 accepting connections OK
-2026-04-27 06:51:56  INFO        NvIngestClient connected  ->  localhost:7671 OK
-2026-04-27 06:51:56  INFO      ========================================================================
-2026-04-27 06:51:56  INFO      NIM HEALTH CHECK
-2026-04-27 06:51:56  INFO      ========================================================================
-2026-04-27 06:51:56  WARNING     FAIL page_elements          port 8000  HTTP 404
-2026-04-27 06:51:56  WARNING          Container up but /v1/health/ready returned 404.
-2026-04-27 06:51:56  WARNING          Try: curl http://localhost:8000/v1/health
-2026-04-27 06:51:56  WARNING               curl http://localhost:8000/health/ready
-2026-04-27 06:51:56  WARNING     FAIL graphic_elements       port 8003  HTTP 000
-2026-04-27 06:51:56  WARNING          Container not running.
-2026-04-27 06:51:56  WARNING          Fix: cd nv-ingest && docker compose --profile yolox-graphic-elements up -d
-2026-04-27 06:51:56  WARNING     FAIL table_structure        port 8006  HTTP 000
-2026-04-27 06:51:56  WARNING          Container not running.
-2026-04-27 06:51:56  WARNING          Fix: cd nv-ingest && docker compose --profile yolox-table-structure up -d
-2026-04-27 06:51:56  WARNING     FAIL ocr                    port 8009  HTTP 000
-2026-04-27 06:51:56  WARNING          Container not running.
-2026-04-27 06:51:56  WARNING          Fix: cd nv-ingest && docker compose --profile ocr up -d
-2026-04-27 06:51:56  WARNING     0/4 NIMs healthy.
-2026-04-27 06:51:56  WARNING     IMPACT: Extraction will run in TEXT-ONLY mode.
-2026-04-27 06:51:56  WARNING     Tables, charts, images, infographics will be SKIPPED.
-2026-04-27 06:51:56  WARNING     Text chunks will still be indexed into Milvus.
-2026-04-27 06:51:56  WARNING     To enable full multimodal, start all NIMs:
-2026-04-27 06:51:56  WARNING       cd nv-ingest
-2026-04-27 06:51:56  WARNING       docker compose --profile retrieval --profile table-structure up -d
-2026-04-27 06:51:56  WARNING       # Wait 10-15 min for model loading, then re-run.
-2026-04-27 06:51:56  INFO      ========================================================================
-2026-04-27 06:51:56  INFO      SANITY CHECK (text-only)  ->  Ascent_of_Open.pdf
-2026-04-27 06:51:56  INFO      ========================================================================
-2026-04-27 06:51:56  INFO      PHASE START : Sanity extraction
-Processing:   0%|                                                                       | 0/1 [00:00<?, ?doc/s][I 2026-04-27T06:51:56.699] Starting batch processing for 1 jobs with batch size 32.
-Processing: 100%|███████████████████████████████████████████████████████████████| 1/1 [00:31<00:00, 31.40s/doc][I 2026-04-27T06:52:28.096] Batch processing finished. Success: 1, Failures: 0. Total accounted for: 1/1
-Processing: 100%|███████████████████████████████████████████████████████████████| 1/1 [00:31<00:00, 31.40s/doc]
-2026-04-27 06:52:28  INFO      PHASE END   : Sanity extraction  ->  31.449s
-2026-04-27 06:52:28  INFO        Results: 1  Failures: 0
- in, nurture and suppor...nce is a technology company working to make research more efficient. We invest 
-2026-04-27 06:52:28  INFO        SANITY CHECK PASSED
-2026-04-27 06:52:28  INFO      ========================================================================
-2026-04-27 06:52:28  INFO      BATCH INGEST  ->  14 files  |  mode: TEXT-ONLY (NIMs not all healthy)
-2026-04-27 06:52:28  INFO        Collection  : multimodal_docs
-2026-04-27 06:52:28  INFO        Milvus URI  : milvus.db
-2026-04-27 06:52:28  INFO        Chunk size  : 512 tokens  overlap: 50
-2026-04-27 06:52:28  INFO        Embed dim   : 2048  tokenizer: intfloat/e5-large-unsupervised
-2026-04-27 06:52:28  INFO        TOP_K=10 is the RAG retrieval count per query, NOT per-file chunk count.
-2026-04-27 06:52:28  INFO        Per-file chunk count depends on document length / 512 tokens.
-2026-04-27 06:52:28  INFO      ========================================================================
-2026-04-27 06:52:28  INFO        [1/14]  Ascent_of_Open.pdf  [TEXT-ONLY]
-[I 2026-04-27T06:52:28.124] Starting batch processing for 1 jobs with batch size 32.
-[I 2026-04-27T06:52:35.312] Batch processing finished. Success: 1, Failures: 0. Total accounted for: 1/1
-[I 2026-04-27T06:52:36.529] 16 elements to insert to milvus
-[I 2026-04-27T06:52:36.530] threshold for streaming is 1000
-[I 2026-04-27T06:52:36.883] streamed 16 records
-[I 2026-04-27T06:52:36.883] Purging saved results from disk after successful VDB upload.
-[W 2026-04-27T06:52:36.883] Purge requested, but save_to_disk was not configured. No files to purge.
-2026-04-27 06:52:36  INFO          results=1  failures=0  time=8.786s
-2026-04-27 06:52:36  INFO        -- wall: 8.786s --
-2026-04-27 06:52:36  INFO        [2/14]  DOC-20260407-WA0009..pdf  [TEXT-ONLY]
-[I 2026-04-27T06:52:36.885] Starting batch processing for 1 jobs with batch size 32.
-[I 2026-04-27T06:52:39.975] Batch processing finished. Success: 1, Failures: 0. Total accounted for: 1/1
-[I 2026-04-27T06:52:40.540] 2 elements to insert to milvus
-[I 2026-04-27T06:52:40.540] threshold for streaming is 1000
-[I 2026-04-27T06:52:40.640] streamed 2 records
-[I 2026-04-27T06:52:40.640] Purging saved results from disk after successful VDB upload.
-[W 2026-04-27T06:52:40.640] Purge requested, but save_to_disk was not configured. No files to purge.
-2026-04-27 06:52:40  INFO          results=1  failures=0  time=3.756s
-2026-04-27 06:52:40  INFO        -- wall: 3.757s --
-2026-04-27 06:52:40  INFO        [3/14]  Driving.jpg  [TEXT-ONLY]
-[I 2026-04-27T06:52:40.641] Starting batch processing for 1 jobs with batch size 32.
-[I 2026-04-27T06:52:41.727] Batch processing finished. Success: 1, Failures: 0. Total accounted for: 1/1
-2026-04-27 06:52:42  ERROR         EXCEPTION: No records with Embeddings to insert detected.
-2026-04-27 06:52:42  ERROR     Traceback (most recent call last):
-  File "/home/clouduser01/jaswanth/pipelinecp.py", line 427, in ingest_single_file
-    results, failures = ingestor.ingest(show_progress=False, return_failures=True)
-                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages/nv_ingest_client/client/interface.py", line 594, in ingest
-    self._vdb_bulk_upload.run(results)
-  File "/home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages/nv_ingest_client/util/vdb/milvus.py", line 1947, in run
-    self.write_to_index(records, **write_params)
-  File "/home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages/nv_ingest_client/util/vdb/milvus.py", line 1912, in write_to_index
-    write_to_nvingest_collection(records, collection_name=collection_name, **kwargs)
-  File "/home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages/nv_ingest_client/util/vdb/milvus.py", line 999, in write_to_nvingest_collection
-    raise ValueError("No records with Embeddings to insert detected.")
-ValueError: No records with Embeddings to insert detected.
+# Python guard
+if sys.version_info < (3, 12):
+    sys.exit(f"[FATAL] Python 3.12+ required. You have {sys.version.split()[0]}")
 
-2026-04-27 06:52:42  INFO        -- wall: 1.812s --
-2026-04-27 06:52:42  INFO        [4/14]  Infinity-Ensure-Brochure.pdf  [TEXT-ONLY]
-[I 2026-04-27T06:52:42.455] Starting batch processing for 1 jobs with batch size 32.
-[I 2026-04-27T06:52:45.563] Batch processing finished. Success: 1, Failures: 0. Total accounted for: 1/1
-[I 2026-04-27T06:52:46.132] 5 elements to insert to milvus
-[I 2026-04-27T06:52:46.132] threshold for streaming is 1000
-[I 2026-04-27T06:52:46.271] streamed 5 records
-[I 2026-04-27T06:52:46.271] Purging saved results from disk after successful VDB upload.
-[W 2026-04-27T06:52:46.271] Purge requested, but save_to_disk was not configured. No files to purge.
-2026-04-27 06:52:46  INFO          results=1  failures=0  time=3.818s
-2026-04-27 06:52:46  INFO        -- wall: 3.819s --
-2026-04-27 06:52:46  INFO        [5/14]  Oxford.pdf  [TEXT-ONLY]
-[I 2026-04-27T06:52:46.285] Starting batch processing for 1 jobs with batch size 32.
-[I 2026-04-27T06:52:49.480] Batch processing finished. Success: 1, Failures: 0. Total accounted for: 1/1
-[I 2026-04-27T06:52:50.926] 47 elements to insert to milvus
-[I 2026-04-27T06:52:50.926] threshold for streaming is 1000
-[I 2026-04-27T06:52:51.776] streamed 47 records
-[I 2026-04-27T06:52:51.777] Purging saved results from disk after successful VDB upload.
-[W 2026-04-27T06:52:51.777] Purge requested, but save_to_disk was not configured. No files to purge.
-2026-04-27 06:52:51  INFO          results=1  failures=0  time=5.505s
-2026-04-27 06:52:51  INFO        -- wall: 5.506s --
-2026-04-27 06:52:51  INFO        [6/14]  PK0016.pdf  [TEXT-ONLY]
-[I 2026-04-27T06:52:51.780] Starting batch processing for 1 jobs with batch size 32.
-[I 2026-04-27T06:52:58.885] Batch processing finished. Success: 1, Failures: 0. Total accounted for: 1/1
-[I 2026-04-27T06:52:59.445] 13 elements to insert to milvus
-[I 2026-04-27T06:52:59.446] threshold for streaming is 1000
-[I 2026-04-27T06:52:59.708] streamed 13 records
-[I 2026-04-27T06:52:59.708] Purging saved results from disk after successful VDB upload.
-[W 2026-04-27T06:52:59.708] Purge requested, but save_to_disk was not configured. No files to purge.
-2026-04-27 06:52:59  INFO          results=1  failures=0  time=7.930s
-2026-04-27 06:52:59  INFO        -- wall: 7.930s --
-2026-04-27 06:52:59  INFO        [7/14]  Screenshot (1).png  [TEXT-ONLY]
-[I 2026-04-27T06:52:59.710] Starting batch processing for 1 jobs with batch size 32.
-[I 2026-04-27T06:53:02.798] Batch processing finished. Success: 1, Failures: 0. Total accounted for: 1/1
-2026-04-27 06:53:04  ERROR         EXCEPTION: No records with Embeddings to insert detected.
-2026-04-27 06:53:04  ERROR     Traceback (most recent call last):
-  File "/home/clouduser01/jaswanth/pipelinecp.py", line 427, in ingest_single_file
-    results, failures = ingestor.ingest(show_progress=False, return_failures=True)
-                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages/nv_ingest_client/client/interface.py", line 594, in ingest
-    self._vdb_bulk_upload.run(results)
-  File "/home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages/nv_ingest_client/util/vdb/milvus.py", line 1947, in run
-    self.write_to_index(records, **write_params)
-  File "/home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages/nv_ingest_client/util/vdb/milvus.py", line 1912, in write_to_index
-    write_to_nvingest_collection(records, collection_name=collection_name, **kwargs)
-  File "/home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages/nv_ingest_client/util/vdb/milvus.py", line 999, in write_to_nvingest_collection
-    raise ValueError("No records with Embeddings to insert detected.")
-ValueError: No records with Embeddings to insert detected.
+# Clear any stale pymilvus connection
+try:
+    import pymilvus; pymilvus.connections.disconnect("default")
+except Exception:
+    pass
 
-2026-04-27 06:53:04  INFO        -- wall: 5.145s --
-2026-04-27 06:53:04  INFO        [8/14]  Singapore_NID_B 1.jpeg  [TEXT-ONLY]
-[I 2026-04-27T06:53:04.855] Starting batch processing for 1 jobs with batch size 32.
-[I 2026-04-27T06:53:11.947] Batch processing finished. Success: 1, Failures: 0. Total accounted for: 1/1
-2026-04-27 06:53:12  ERROR         EXCEPTION: No records with Embeddings to insert detected.
-2026-04-27 06:53:12  ERROR     Traceback (most recent call last):
-  File "/home/clouduser01/jaswanth/pipelinecp.py", line 427, in ingest_single_file
-    results, failures = ingestor.ingest(show_progress=False, return_failures=True)
-                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages/nv_ingest_client/client/interface.py", line 594, in ingest
-    self._vdb_bulk_upload.run(results)
-  File "/home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages/nv_ingest_client/util/vdb/milvus.py", line 1947, in run
-    self.write_to_index(records, **write_params)
-  File "/home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages/nv_ingest_client/util/vdb/milvus.py", line 1912, in write_to_index
-    write_to_nvingest_collection(records, collection_name=collection_name, **kwargs)
-  File "/home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages/nv_ingest_client/util/vdb/milvus.py", line 999, in write_to_nvingest_collection
-    raise ValueError("No records with Embeddings to insert detected.")
-ValueError: No records with Embeddings to insert detected.
+# ── CONFIG ────────────────────────────────────────────────────────────────────
+DOCS_FOLDER     = "Docs"
+FILE_PATTERNS   = ["*.pdf", "*.docx", "*.pptx", "*.jpeg", "*.jpg", "*.png"]
+MILVUS_URI      = "milvus.db"
+COLLECTION_NAME = "multimodal_docs"
+SPARSE          = False
+DENSE_DIM       = 2048
+CHUNK_SIZE      = 512
+CHUNK_OVERLAP   = 50
+TOKENIZER       = "intfloat/e5-large-unsupervised"
+LLM_MODEL       = "meta/llama-3.3-70b-instruct"
+LLM_BASE_URL    = "https://integrate.api.nvidia.com/v1"
+PIPELINE_WAIT   = 90          # seconds to wait for port 7671
+RESULTS_DIR     = "Outputs"
+TOP_K           = 10          # chunks returned per RAG query, NOT per-file count
 
-2026-04-27 06:53:12  INFO        -- wall: 7.664s --
-2026-04-27 06:53:12  INFO        [9/14]  Singapore_NID_F 1.jpeg  [TEXT-ONLY]
-[I 2026-04-27T06:53:12.519] Starting batch processing for 1 jobs with batch size 32.
-[I 2026-04-27T06:53:15.609] Batch processing finished. Success: 1, Failures: 0. Total accounted for: 1/1
-2026-04-27 06:53:16  ERROR         EXCEPTION: No records with Embeddings to insert detected.
-2026-04-27 06:53:16  ERROR     Traceback (most recent call last):
-  File "/home/clouduser01/jaswanth/pipelinecp.py", line 427, in ingest_single_file
-    results, failures = ingestor.ingest(show_progress=False, return_failures=True)
-                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages/nv_ingest_client/client/interface.py", line 594, in ingest
-    self._vdb_bulk_upload.run(results)
-  File "/home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages/nv_ingest_client/util/vdb/milvus.py", line 1947, in run
-    self.write_to_index(records, **write_params)
-  File "/home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages/nv_ingest_client/util/vdb/milvus.py", line 1912, in write_to_index
-    write_to_nvingest_collection(records, collection_name=collection_name, **kwargs)
-  File "/home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages/nv_ingest_client/util/vdb/milvus.py", line 999, in write_to_nvingest_collection
-    raise ValueError("No records with Embeddings to insert detected.")
-ValueError: No records with Embeddings to insert detected.
+# Image-only formats that produce 0 embeddable text without OCR NIM
+IMAGE_ONLY_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".tiff"}
 
-2026-04-27 06:53:16  INFO        -- wall: 3.647s --
-2026-04-27 06:53:16  INFO        [10/14]  california-drivers-license-small 1 1.jpg  [TEXT-ONLY]
-[I 2026-04-27T06:53:16.166] Starting batch processing for 1 jobs with batch size 32.
-[I 2026-04-27T06:53:17.253] Batch processing finished. Success: 1, Failures: 0. Total accounted for: 1/1
-2026-04-27 06:53:17  ERROR         EXCEPTION: No records with Embeddings to insert detected.
-2026-04-27 06:53:17  ERROR     Traceback (most recent call last):
-  File "/home/clouduser01/jaswanth/pipelinecp.py", line 427, in ingest_single_file
-    results, failures = ingestor.ingest(show_progress=False, return_failures=True)
-                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages/nv_ingest_client/client/interface.py", line 594, in ingest
-    self._vdb_bulk_upload.run(results)
-  File "/home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages/nv_ingest_client/util/vdb/milvus.py", line 1947, in run
-    self.write_to_index(records, **write_params)
-  File "/home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages/nv_ingest_client/util/vdb/milvus.py", line 1912, in write_to_index
-    write_to_nvingest_collection(records, collection_name=collection_name, **kwargs)
-  File "/home/clouduser01/micromamba/envs/myenv/lib/python3.12/site-packages/nv_ingest_client/util/vdb/milvus.py", line 999, in write_to_nvingest_collection
-    raise ValueError("No records with Embeddings to insert detected.")
-ValueError: No records with Embeddings to insert detected.
+NIM_ENV_VARS = {
+    "YOLOX_HTTP_ENDPOINT"                   : "http://localhost:8000/v1/infer",
+    "YOLOX_INFER_PROTOCOL"                  : "http",
+    "YOLOX_GRAPHIC_ELEMENTS_HTTP_ENDPOINT"  : "http://localhost:8003/v1/infer",
+    "YOLOX_GRAPHIC_ELEMENTS_INFER_PROTOCOL" : "http",
+    "YOLOX_TABLE_STRUCTURE_HTTP_ENDPOINT"   : "http://localhost:8006/v1/infer",
+    "YOLOX_TABLE_STRUCTURE_INFER_PROTOCOL"  : "http",
+    "OCR_HTTP_ENDPOINT"                     : "http://localhost:8009/v1/infer",
+    "OCR_INFER_PROTOCOL"                    : "http",
+}
 
-2026-04-27 06:53:17  INFO        -- wall: 1.648s --
-2026-04-27 06:53:17  INFO        [11/14]  invoice-0-4.pdf  [TEXT-ONLY]
-[I 2026-04-27T06:53:17.814] Starting batch processing for 1 jobs with batch size 32.
-[I 2026-04-27T06:53:20.902] Batch processing finished. Success: 1, Failures: 0. Total accounted for: 1/1
-[I 2026-04-27T06:53:21.474] 2 elements to insert to milvus
-[I 2026-04-27T06:53:21.474] threshold for streaming is 1000
-[I 2026-04-27T06:53:21.574] streamed 2 records
-[I 2026-04-27T06:53:21.574] Purging saved results from disk after successful VDB upload.
-[W 2026-04-27T06:53:21.574] Purge requested, but save_to_disk was not configured. No files to purge.
-2026-04-27 06:53:21  INFO          results=1  failures=0  time=3.762s
-2026-04-27 06:53:21  INFO        -- wall: 3.762s --
-2026-04-27 06:53:21  INFO        [12/14]  minion-tech.pdf  [TEXT-ONLY]
-[I 2026-04-27T06:53:21.613] Starting batch processing for 1 jobs with batch size 32.
-[I 2026-04-27T06:53:24.983] Batch processing finished. Success: 1, Failures: 0. Total accounted for: 1/1
-[I 2026-04-27T06:53:25.568] 22 elements to insert to milvus
-[I 2026-04-27T06:53:25.568] threshold for streaming is 1000
-[I 2026-04-27T06:53:25.971] streamed 22 records
-[I 2026-04-27T06:53:25.972] Purging saved results from disk after successful VDB upload.
-[W 2026-04-27T06:53:25.972] Purge requested, but save_to_disk was not configured. No files to purge.
-2026-04-27 06:53:25  INFO          results=1  failures=0  time=4.397s
-2026-04-27 06:53:25  INFO        -- wall: 4.398s --
-2026-04-27 06:53:25  INFO        [13/14]  multimodal_test.pdf  [TEXT-ONLY]
-[I 2026-04-27T06:53:25.974] Starting batch processing for 1 jobs with batch size 32.
-[I 2026-04-27T06:53:33.065] Batch processing finished. Success: 1, Failures: 0. Total accounted for: 1/1
-[I 2026-04-27T06:53:33.627] 3 elements to insert to milvus
-[I 2026-04-27T06:53:33.627] threshold for streaming is 1000
-[I 2026-04-27T06:53:33.752] streamed 3 records
-[I 2026-04-27T06:53:33.752] Purging saved results from disk after successful VDB upload.
-[W 2026-04-27T06:53:33.752] Purge requested, but save_to_disk was not configured. No files to purge.
-2026-04-27 06:53:33  INFO          results=1  failures=0  time=7.779s
-2026-04-27 06:53:33  INFO        -- wall: 7.780s --
-2026-04-27 06:53:33  INFO        [14/14]  policy-2.pdf  [TEXT-ONLY]
-[I 2026-04-27T06:53:33.756] Starting batch processing for 1 jobs with batch size 32.
-[I 2026-04-27T06:53:40.876] Batch processing finished. Success: 1, Failures: 0. Total accounted for: 1/1
-[I 2026-04-27T06:53:41.450] 12 elements to insert to milvus
-[I 2026-04-27T06:53:41.450] threshold for streaming is 1000
-[I 2026-04-27T06:53:41.723] streamed 12 records
-[I 2026-04-27T06:53:41.723] Purging saved results from disk after successful VDB upload.
-[W 2026-04-27T06:53:41.723] Purge requested, but save_to_disk was not configured. No files to purge.
-2026-04-27 06:53:41  INFO          results=1  failures=0  time=7.971s
-2026-04-27 06:53:41  INFO        -- wall: 7.971s --
-2026-04-27 06:53:41  INFO      ========================================================================
-2026-04-27 06:53:41  INFO      BATCH SUMMARY
-2026-04-27 06:53:41  INFO        Total    : 14
-2026-04-27 06:53:41  INFO        OK       : 9
-2026-04-27 06:53:41  INFO        Failed   : 5
-2026-04-27 06:53:41  INFO        Total t  : 73.627s
-2026-04-27 06:53:41  INFO        Avg/doc  : 5.259s
-2026-04-27 06:53:41  INFO      ========================================================================
-2026-04-27 06:53:41  INFO      ========================================================================
-2026-04-27 06:53:41  INFO      MILVUS VERIFICATION
-2026-04-27 06:53:41  INFO        Collection 'multimodal_docs': 12 total entities (chunks)
-2026-04-27 06:53:41  INFO        Milvus populated OK  (12 chunks total)
-2026-04-27 06:53:41  INFO        RAG will retrieve top 10 most relevant per query.
-2026-04-27 06:53:41  INFO      ========================================================================
-2026-04-27 06:53:41  INFO      RAG QUERIES  ->  18 question(s)
-2026-04-27 06:53:41  INFO        Milvus TOP_K  : 10  (max chunks returned per query)
-2026-04-27 06:53:41  INFO        LLM model     : meta/llama-3.3-70b-instruct
-2026-04-27 06:53:41  INFO      ========================================================================
-2026-04-27 06:53:41  INFO        Q1: What cash consideration will each Public Common Unit receive at the effective time of the merger?
-[I 2026-04-27T06:53:43.529] HTTP Request: POST https://integrate.api.nvidia.com/v1/embeddings "HTTP/1.1 200 OK"
-2026-04-27 06:53:43  INFO          Retrieval: 1.918s | chunks returned: 10  (TOP_K=10)
-[I 2026-04-27T06:53:45.465] HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
-2026-04-27 06:53:45  INFO          LLM: 1.812s | tokens=4607 | tok/s=23.2
-2026-04-27 06:53:45  INFO          Answer: The answer is not in the context. The provided context is about the University of Toledo Medical Center's Documentation Standards Policy, and it does not mention anything about a merger or cash consid
-2026-04-27 06:53:46  INFO        Q2: What are the signature requirements for every medical record entry under this documentation standards policy?
-[I 2026-04-27T06:53:46.695] HTTP Request: POST https://integrate.api.nvidia.com/v1/embeddings "HTTP/1.1 200 OK"
-2026-04-27 06:53:46  INFO          Retrieval: 0.347s | chunks returned: 10  (TOP_K=10)
-[I 2026-04-27T06:53:48.368] HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
-2026-04-27 06:53:48  INFO          LLM: 1.548s | tokens=4613 | tok/s=31.7
-2026-04-27 06:53:48  INFO          Answer: Every medical record entry must be timed, dated, and its author identified with either electronic or ink signature as defined in hospital policy #3364-100-53-18. All written entries in the medical rec
-2026-04-27 06:53:49  INFO        Q3: What percentage of the outstanding Common Units did DCP Midstream and the General Partner own when they delivered written consent approving the merger?
-[I 2026-04-27T06:53:49.606] HTTP Request: POST https://integrate.api.nvidia.com/v1/embeddings "HTTP/1.1 200 OK"
-2026-04-27 06:53:49  INFO          Retrieval: 0.367s | chunks returned: 10  (TOP_K=10)
-[I 2026-04-27T06:53:55.137] HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
-2026-04-27 06:53:55  INFO          LLM: 5.401s | tokens=4686 | tok/s=8.9
-2026-04-27 06:53:55  INFO          Answer: The answer is not in the context. The provided context appears to be a medical policy document and does not mention DCP Midstream, the General Partner, or the merger. It discusses documentation standa
-2026-04-27 06:53:56  INFO        Q4: What key capabilities or features does Infinity Ensure provide for cloud governance and cost optimization?
-[I 2026-04-27T06:53:56.381] HTTP Request: POST https://integrate.api.nvidia.com/v1/embeddings "HTTP/1.1 200 OK"
-2026-04-27 06:53:56  INFO          Retrieval: 0.369s | chunks returned: 10  (TOP_K=10)
-[I 2026-04-27T06:53:58.362] HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
-2026-04-27 06:53:58  INFO          LLM: 1.855s | tokens=4689 | tok/s=19.4
-2026-04-27 06:53:58  INFO          Answer: The answer is not in the context. The provided context appears to be a policy document related to medical record documentation standards, and it does not mention Infinity Ensure or its features.
-2026-04-27 06:53:59  INFO        Q5: Within how many days must ambulatory EMR documentation be complete after the patient encounter, and within how many days must the inpatient medical record be completed after discharge?
-[I 2026-04-27T06:53:59.594] HTTP Request: POST https://integrate.api.nvidia.com/v1/embeddings "HTTP/1.1 200 OK"
-2026-04-27 06:53:59  INFO          Retrieval: 0.358s | chunks returned: 10  (TOP_K=10)
-[I 2026-04-27T06:54:00.876] HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
-2026-04-27 06:54:00  INFO          LLM: 1.156s | tokens=4973 | tok/s=32.9
-2026-04-27 06:54:00  INFO          Answer: According to the context, ambulatory EMR documentation must be complete within 7 days of the patient encounter. The inpatient medical record must be completed within 30 days of discharge.
-2026-04-27 06:54:01  INFO        Q6: What business outcomes or savings are described in the brochure’s customer examples?
-[I 2026-04-27T06:54:02.124] HTTP Request: POST https://integrate.api.nvidia.com/v1/embeddings "HTTP/1.1 200 OK"
-2026-04-27 06:54:02  INFO          Retrieval: 0.368s | chunks returned: 10  (TOP_K=10)
-[I 2026-04-27T06:54:03.912] HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
-2026-04-27 06:54:03  INFO          LLM: 1.666s | tokens=4318 | tok/s=30.0
-2026-04-27 06:54:03  INFO          Answer: The context provided does not contain any information about a brochure or customer examples, nor does it mention business outcomes or savings. The context appears to be a medical documentation standar
-2026-04-27 06:54:04  INFO        Q7: What does the policy say about texting medical orders and using email to transmit orders?
-[I 2026-04-27T06:54:05.131] HTTP Request: POST https://integrate.api.nvidia.com/v1/embeddings "HTTP/1.1 200 OK"
-2026-04-27 06:54:05  INFO          Retrieval: 0.346s | chunks returned: 10  (TOP_K=10)
-[I 2026-04-27T06:54:07.848] HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
-2026-04-27 06:54:07  INFO          LLM: 2.589s | tokens=4645 | tok/s=31.3
-2026-04-27 06:54:07  INFO          Answer: According to the policy, texting orders is not permitted per CMS and TJC regulations/standards. However, providers can communicate with other healthcare team members via secure and encrypted text thro
-2026-04-27 06:54:08  INFO        Q8: Which units or securities will remain outstanding and unaffected immediately following the merger?
-[I 2026-04-27T06:54:09.188] HTTP Request: POST https://integrate.api.nvidia.com/v1/embeddings "HTTP/1.1 200 OK"
-2026-04-27 06:54:09  INFO          Retrieval: 0.355s | chunks returned: 10  (TOP_K=10)
-[I 2026-04-27T06:54:23.767] HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
-2026-04-27 06:54:23  INFO          LLM: 14.458s | tokens=4631 | tok/s=2.4
-2026-04-27 06:54:23  INFO          Answer: The answer is not in the context. The context provided appears to be related to medical documentation standards and policies, and does not mention a merger or units/securities.
-2026-04-27 06:54:24  INFO        Q9: What is Infinity Ensure, and what main problem does it aim to solve for cloud environments?
-[I 2026-04-27T06:54:25.024] HTTP Request: POST https://integrate.api.nvidia.com/v1/embeddings "HTTP/1.1 200 OK"
-2026-04-27 06:54:25  INFO          Retrieval: 0.389s | chunks returned: 10  (TOP_K=10)
-[I 2026-04-27T06:54:30.450] HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
-2026-04-27 06:54:30  INFO          LLM: 5.293s | tokens=4623 | tok/s=10.8
-2026-04-27 06:54:30  INFO          Answer: The context provided does not mention "Infinity Ensure" or its relation to cloud environments. The context appears to be a policy document for the University of Toledo Medical Center, focusing on docu
-2026-04-27 06:54:31  INFO        Q10: What happens to PDI’s ownership interest in Merger Sub at the effective time of the merger, and how is that amount determined?
-[I 2026-04-27T06:54:31.701] HTTP Request: POST https://integrate.api.nvidia.com/v1/embeddings "HTTP/1.1 200 OK"
-2026-04-27 06:54:31  INFO          Retrieval: 0.254s | chunks returned: 10  (TOP_K=10)
-[I 2026-04-27T06:54:35.046] HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
-2026-04-27 06:54:35  INFO          LLM: 3.341s | tokens=4661 | tok/s=25.7
-2026-04-27 06:54:35  INFO          Answer: The answer is not in the context. The provided context appears to be a medical policy document, specifically the "Documentation Standards" policy for the University of Toledo Medical Center (UTMC). It
-2026-04-27 06:54:36  INFO        Q11: What are the timing requirements for inpatient history and physicals (H&Ps), including updates on the day of a procedure requiring anesthesia?
-[I 2026-04-27T06:54:36.282] HTTP Request: POST https://integrate.api.nvidia.com/v1/embeddings "HTTP/1.1 200 OK"
-2026-04-27 06:54:36  INFO          Retrieval: 0.364s | chunks returned: 10  (TOP_K=10)
-[I 2026-04-27T06:54:44.012] HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
-2026-04-27 06:54:44  INFO          LLM: 7.556s | tokens=4878 | tok/s=27.8
-2026-04-27 06:54:44  INFO          Answer: The timing requirements for inpatient history and physicals (H&Ps) are as follows:   1. An H&P must be completed no more than 30 days before or within 24 hours of admission, but prior to surgery or a 
-2026-04-27 06:54:45  INFO        Q12: How does the brochure describe Infinity Ensure’s governance capabilities in terms of checks, remediation, reporting, and access management?
-[I 2026-04-27T06:54:45.310] HTTP Request: POST https://integrate.api.nvidia.com/v1/embeddings "HTTP/1.1 200 OK"
-2026-04-27 06:54:45  INFO          Retrieval: 0.379s | chunks returned: 10  (TOP_K=10)
-[I 2026-04-27T06:54:47.539] HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
-2026-04-27 06:54:47  INFO          LLM: 2.147s | tokens=4626 | tok/s=25.2
-2026-04-27 06:54:47  INFO          Answer: The context provided does not mention Infinity Ensure or its governance capabilities. The context appears to be a policy document related to documentation standards for medical records at the Universi
-2026-04-27 06:54:48  INFO        Q13: Who are the filing persons listed in the Schedule 13E-3 transaction statement, and what role does Merger Sub play in the transaction?
-[I 2026-04-27T06:54:48.768] HTTP Request: POST https://integrate.api.nvidia.com/v1/embeddings "HTTP/1.1 200 OK"
-2026-04-27 06:54:48  INFO          Retrieval: 0.354s | chunks returned: 10  (TOP_K=10)
-[I 2026-04-27T06:55:09.846] HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
-2026-04-27 06:55:09  INFO          LLM: 20.952s | tokens=4361 | tok/s=2.9
-2026-04-27 06:55:09  INFO          Answer: The provided context does not contain information about the Schedule 13E-3 transaction statement, filing persons, or Merger Sub. The context appears to be related to medical record documentation stand
-2026-04-27 06:55:10  INFO        Q14: According to the policy, what parts of the encounter may medical students document, and what must the physician still personally perform, review, or attest to?
-[I 2026-04-27T06:55:11.077] HTTP Request: POST https://integrate.api.nvidia.com/v1/embeddings "HTTP/1.1 200 OK"
-2026-04-27 06:55:11  INFO          Retrieval: 0.354s | chunks returned: 10  (TOP_K=10)
-[I 2026-04-27T06:55:22.434] HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
-2026-04-27 06:55:22  INFO          LLM: 11.233s | tokens=4526 | tok/s=12.8
-2026-04-27 06:55:22  INFO          Answer: According to the policy, medical students may document the following parts of the encounter:   1. Review of the System 2. Past, Family and Social History 3. History of Present Illness 4. Physical Exam
-2026-04-27 06:55:23  INFO        Q15: What are the main categories of cloud risks or operational concerns that Infinity Ensure is designed to address?
-[I 2026-04-27T06:55:23.672] HTTP Request: POST https://integrate.api.nvidia.com/v1/embeddings "HTTP/1.1 200 OK"
-2026-04-27 06:55:23  INFO          Retrieval: 0.363s | chunks returned: 10  (TOP_K=10)
-[I 2026-04-27T06:55:48.164] HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
-2026-04-27 06:55:48  INFO          LLM: 24.367s | tokens=4595 | tok/s=1.1
-2026-04-27 06:55:48  INFO          Answer: The answer is not in the context. The provided text is related to medical documentation standards and does not mention Infinity Ensure or cloud risks.
-2026-04-27 06:55:49  INFO        Q16: What concrete outcomes are described in the customer examples for cloud portfolio optimization and compliance/cost optimization?
-[I 2026-04-27T06:55:49.399] HTTP Request: POST https://integrate.api.nvidia.com/v1/embeddings "HTTP/1.1 200 OK"
-2026-04-27 06:55:49  INFO          Retrieval: 0.362s | chunks returned: 10  (TOP_K=10)
-[I 2026-04-27T06:56:05.108] HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
-2026-04-27 06:56:05  INFO          LLM: 15.580s | tokens=4626 | tok/s=3.8
-2026-04-27 06:56:05  INFO          Answer: The provided context does not contain information related to cloud portfolio optimization and compliance/cost optimization, or customer examples. The context appears to be a medical policy document ou
-2026-04-27 06:56:06  INFO        Q17: What information must be included in the immediate post-operative progress note, and by when must the detailed dictated procedure report be placed in the record?
-[I 2026-04-27T06:56:06.340] HTTP Request: POST https://integrate.api.nvidia.com/v1/embeddings "HTTP/1.1 200 OK"
-2026-04-27 06:56:06  INFO          Retrieval: 0.366s | chunks returned: 10  (TOP_K=10)
-[I 2026-04-27T06:56:12.117] HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
-2026-04-27 06:56:12  INFO          LLM: 5.642s | tokens=4794 | tok/s=35.6
-2026-04-27 06:56:12  INFO          Answer: The immediate post-operative progress note must include at a minimum:  1. Pre-operative and post-operative diagnosis;  2. Name of the specific procedure(s) performed, may include relevant findings;  3
-2026-04-27 06:56:13  INFO        Q18: What approvals or conditions were required from limited partners for the merger, and how was that requirement satisfied on January 5, 2023? [merger_agreement 1 | PDF]
-[I 2026-04-27T06:56:13.446] HTTP Request: POST https://integrate.api.nvidia.com/v1/embeddings "HTTP/1.1 200 OK"
-2026-04-27 06:56:13  INFO          Retrieval: 0.456s | chunks returned: 10  (TOP_K=10)
-[I 2026-04-27T06:56:15.423] HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
-2026-04-27 06:56:15  INFO          LLM: 1.368s | tokens=4631 | tok/s=32.9
-2026-04-27 06:56:15  INFO          Answer: The context provided does not mention anything about a merger, limited partners, or a specific date of January 5, 2023. Therefore, the answer to the question is: The information is not in the context.
-2026-04-27 06:56:16  INFO        Answers saved -> Outputs/answers_20260427_064310.json
-2026-04-27 06:56:16  INFO        Metrics saved -> Outputs/metrics_20260427_064310.json
-2026-04-27 06:56:16  INFO      ========================================================================
-2026-04-27 06:56:16  INFO      FINAL RUN SUMMARY
-2026-04-27 06:56:16  INFO      ========================================================================
-2026-04-27 06:56:16  INFO        Run ID               : 20260427_064310
-2026-04-27 06:56:16  INFO        Pipeline init        : 0.011s
-2026-04-27 06:56:16  INFO        Sanity check         : 31.449s
-2026-04-27 06:56:16  INFO        Total batch ingest   : 73.627s
-2026-04-27 06:56:16  INFO        Total documents      : 14
-2026-04-27 06:56:16  INFO        Successful           : 9
-2026-04-27 06:56:16  INFO        Avg per doc          : 5.257s
-2026-04-27 06:56:16  INFO        Total wall time      : 105.087s
-2026-04-27 06:56:16  INFO        Log file    -> Outputs/pipeline_run_20260427_064310.log
-2026-04-27 06:56:16  INFO        Metrics     -> Outputs/metrics_20260427_064310.json
-2026-04-27 06:56:16  INFO        Answers     -> Outputs/answers_20260427_064310.json
-2026-04-27 06:56:16  INFO      ========================================================================
-2026-04-27 06:56:16  INFO        Total wall clock: 785.631s
-2026-04-27 06:56:16  INFO        PIPELINE DONE.
-2026-04-27 06:56:16  INFO      ========================================================================
-Killed subprocess group 106229
-E20260427 06:56:17.495389 112755 server.cpp:47] [SERVER][BlockLock][milvus] Process exit
-(myenv) clouduser01@AZRCIDEVNIVIDIA:~/jaswanth$ 
+DEFAULT_QUESTIONS = [
+    "Why did economics and physics become early movers in open access adoption?",
+    "How did arXiv influence scholarly communication in physics?",
+    "Why did life sciences move more toward open access journals and APC models?",
+    "What does the report mean by successive waves of open access innovation?",
+    "How does the report connect open access, open data, and reproducibility?",
+]
 
+# ── LOGGING — isolated from nv_ingest root logger hijack ─────────────────────
+# nv_ingest calls configure_logging() at import time which overwrites the root
+# logger handlers. Using propagate=False on our named logger prevents that.
+Path(RESULTS_DIR).mkdir(parents=True, exist_ok=True)
+RUN_ID       = datetime.now().strftime("%Y%m%d_%H%M%S")
+LOG_FILE     = os.path.join(RESULTS_DIR, f"pipeline_run_{RUN_ID}.log")
+METRICS_FILE = os.path.join(RESULTS_DIR, f"metrics_{RUN_ID}.json")
+ANSWERS_FILE = os.path.join(RESULTS_DIR, f"answers_{RUN_ID}.json")
+
+_fmt = logging.Formatter("%(asctime)s  %(levelname)-8s  %(message)s", "%Y-%m-%d %H:%M:%S")
+_fh  = logging.FileHandler(LOG_FILE, mode="w", encoding="utf-8", delay=False)
+_fh.setLevel(logging.DEBUG); _fh.setFormatter(_fmt)
+_ch  = logging.StreamHandler(sys.stdout)
+_ch.setLevel(logging.INFO);  _ch.setFormatter(_fmt)
+
+log = logging.getLogger("pipeline")
+log.setLevel(logging.DEBUG)
+log.propagate = False   # key: blocks nv_ingest from wiping our FileHandler
+log.addHandler(_fh); log.addHandler(_ch)
+
+def flush():
+    for h in log.handlers: h.flush()
+
+def sep(c="=", w=72): log.info(c * w); flush()
+
+def tick(name): log.info(f">> {name}"); flush(); return time.perf_counter()
+
+def tock(name, t0):
+    e = time.perf_counter() - t0
+    log.info(f"<< {name}  {e:.3f}s"); flush(); return e
+
+# ── QUESTIONS ─────────────────────────────────────────────────────────────────
+def collect_questions():
+    print("\n" + "=" * 72)
+    print("  Enter questions. Blank line or 'done' to finish.")
+    print("=" * 72 + "\n")
+    qs, idx = [], 1
+    while True:
+        try: q = input(f"  Q{idx}: ").strip()
+        except EOFError: break
+        if q.lower() in ("", "done"):
+            if not qs: print("  [!] Need at least one question."); continue
+            break
+        qs.append(q); idx += 1
+    log.info(f"Collected {len(qs)} question(s)."); flush()
+    return qs
+
+# ── ENVIRONMENT ───────────────────────────────────────────────────────────────
+def setup_env():
+    sep()
+    log.info("ENVIRONMENT SETUP")
+    sep()
+    api_key = os.environ.get("NVIDIA_API_KEY", "")
+    if not api_key:
+        log.error("NVIDIA_API_KEY not set.  export NVIDIA_API_KEY='nvapi-...'")
+        flush(); sys.exit(1)
+    log.info(f"  NVIDIA_API_KEY : ********{api_key[-6:]}")
+    for var, default in NIM_ENV_VARS.items():
+        if not os.environ.get(var):
+            os.environ[var] = default
+            log.info(f"  {var:<47} -> {default}")
+        else:
+            log.info(f"  {var:<47} (already set)")
+    log.info("  All NIM vars injected into os.environ before run_pipeline().")
+    flush(); return api_key
+
+# ── NIM HEALTH ────────────────────────────────────────────────────────────────
+NIM_CHECKS = {
+    "page_elements"    : ("http://localhost:8000/v1/health/ready", 8000),
+    "graphic_elements" : ("http://localhost:8003/v1/health/ready", 8003),
+    "table_structure"  : ("http://localhost:8006/v1/health/ready", 8006),
+    "ocr"              : ("http://localhost:8009/v1/health/ready", 8009),
+}
+
+def check_nims():
+    sep()
+    log.info("NIM HEALTH CHECK")
+    sep()
+    status = {}
+    for name, (url, port) in NIM_CHECKS.items():
+        try:
+            r = subprocess.run(
+                ["curl", "-s", "-o", "/dev/null", "-w", "%{http_code}", "--max-time", "5", url],
+                capture_output=True, text=True)
+            code = r.stdout.strip()
+            ok = code in ("200", "201")
+            status[name] = ok
+            tag = "OK  " if ok else "FAIL"
+            log.info(f"  {tag}  {name:<22} port {port}  HTTP {code}")
+            if not ok:
+                if code == "000": log.warning(f"       Container not running on port {port}")
+                elif code == "404": log.warning(f"       Container up but health path returned 404")
+        except Exception as e:
+            status[name] = False
+            log.warning(f"  FAIL {name:<22} port {port}  error: {e}")
+
+    healthy = sum(status.values())
+    if healthy == 4:
+        log.info("  All 4 NIMs healthy — full multimodal extraction enabled.")
+    else:
+        log.warning(f"  {healthy}/4 NIMs healthy — running in TEXT-ONLY mode.")
+        log.warning("  Images/tables/charts will be skipped (no OCR/YOLOX NIMs).")
+        log.warning("  To enable full multimodal:")
+        log.warning("    cd nv-ingest && docker compose --profile retrieval --profile table-structure up -d")
+        log.warning("    Wait 10-15 min for model loading, then re-run.")
+    flush(); return status
+
+# ── FILE DISCOVERY ────────────────────────────────────────────────────────────
+def find_files():
+    sep()
+    log.info(f"FILE DISCOVERY  ->  {DOCS_FOLDER}/")
+    files = []
+    for pat in FILE_PATTERNS:
+        found = sorted(glob.glob(os.path.join(DOCS_FOLDER, pat)))
+        if found: log.info(f"  {pat:<12} -> {len(found)}")
+        files.extend(found)
+    files = sorted(set(files))
+    log.info(f"  Total: {len(files)} file(s)")
+    for f in files:
+        log.info(f"    {Path(f).name:<52} {os.path.getsize(f)/1048576:.2f} MB")
+    if not files:
+        log.error(f"No files found in {DOCS_FOLDER}/ matching {FILE_PATTERNS}")
+        flush(); sys.exit(1)
+    flush(); return files
+
+# ── PIPELINE START ────────────────────────────────────────────────────────────
+def start_pipeline():
+    sep()
+    log.info("PIPELINE INIT")
+    sep()
+    from nv_ingest.framework.orchestration.ray.util.pipeline.pipeline_runners import (
+        run_pipeline, PipelineCreationSchema)
+    from nv_ingest_client.client import NvIngestClient
+    from nv_ingest_api.util.message_brokers.simple_message_broker import SimpleClient
+
+    t0 = tick("Pipeline subprocess")
+    run_pipeline(PipelineCreationSchema(), block=False,
+                 disable_dynamic_scaling=True, run_in_subprocess=True)
+    init_time = tock("Pipeline subprocess", t0)
+
+    log.info(f"  Polling port 7671 (max {PIPELINE_WAIT}s)...")
+    deadline = time.time() + PIPELINE_WAIT
+    while time.time() < deadline:
+        try:
+            with socket.create_connection(("localhost", 7671), timeout=2): break
+        except (ConnectionRefusedError, OSError): time.sleep(2)
+    else:
+        log.error("Port 7671 never opened — pipeline subprocess crashed.")
+        flush(); sys.exit(1)
+    log.info("  Port 7671 ready.")
+    time.sleep(5)
+
+    client = NvIngestClient(message_client_allocator=SimpleClient,
+                            message_client_port=7671, message_client_hostname="localhost")
+    log.info("  NvIngestClient connected -> localhost:7671")
+    flush(); return client, init_time
+
+# ── SANITY CHECK ──────────────────────────────────────────────────────────────
+def sanity_check(client, filepath):
+    from nv_ingest_client.client import Ingestor
+    from nv_ingest_client.util.process_json_files import ingest_json_results_to_blob
+    sep()
+    log.info(f"SANITY CHECK (text-only) -> {Path(filepath).name}")
+    sep()
+    t0 = tick("Sanity")
+    ingestor = (Ingestor(client=client).files(filepath)
+                .extract(extract_text=True, extract_tables=False,
+                         extract_charts=False, extract_images=False,
+                         extract_infographics=False, text_depth="page"))
+    results, failures = ingestor.ingest(show_progress=True, return_failures=True)
+    st = tock("Sanity", t0)
+    log.info(f"  Results: {len(results)}  Failures: {len(failures)}")
+    if failures:
+        for i, f in enumerate(failures): log.error(f"  FAIL[{i}]: {f}")
+        log.error("Sanity check failed."); flush(); sys.exit(1)
+    if not results:
+        log.error("Empty response from pipeline."); flush(); sys.exit(1)
+    log.info(f"  Preview: {ingest_json_results_to_blob(results[0])[:200].replace(chr(10),' ')}...")
+    log.info("  SANITY PASSED"); flush()
+    return st
+
+# ── INGEST ONE FILE ───────────────────────────────────────────────────────────
+# FIX: image-only files (jpg/jpeg/png) produce zero embeddable text in TEXT-ONLY
+# mode because there is no OCR NIM. The vdb_upload() call then raises:
+#   ValueError: No records with Embeddings to insert detected.
+# We detect this upfront and skip image-only files when NIMs are not healthy,
+# counting them as "skipped" instead of "failed" so they don't break the batch.
+def ingest_single_file(client, filepath, idx, total, nim_status):
+    from nv_ingest_client.client import Ingestor
+
+    fname   = Path(filepath).name
+    ext     = Path(filepath).suffix.lower()
+    all_ok  = all(nim_status.values())
+    ocr_ok  = nim_status.get("ocr", False)
+    mode    = "FULL" if all_ok else "TEXT-ONLY"
+
+    # Skip pure image files when OCR NIM is not running — they will produce
+    # zero text, then vdb_upload raises ValueError with no embeddings.
+    if ext in IMAGE_ONLY_EXTS and not ocr_ok:
+        log.info(f"  [{idx}/{total}]  {fname}  [SKIPPED — image file, OCR NIM not running]")
+        log.warning(f"    Start OCR NIM to index this image: docker compose --profile ocr up -d")
+        flush()
+        return {"mode": "skipped", "total_ingest_sec": 0,
+                "results_count": 0, "failures_count": 0, "skipped": True}, []
+
+    log.info(f"  [{idx}/{total}]  {fname}  [{mode}]")
+    extract_kw = dict(extract_text=True, text_depth="page",
+                      extract_tables=all_ok, extract_charts=all_ok,
+                      extract_images=all_ok, extract_infographics=all_ok,
+                      **({"table_output_format": "markdown"} if all_ok else {}))
+    t0 = time.perf_counter()
+    try:
+        ingestor = (Ingestor(client=client).files(filepath)
+                    .extract(**extract_kw)
+                    .split(tokenizer=TOKENIZER, chunk_size=CHUNK_SIZE,
+                           chunk_overlap=CHUNK_OVERLAP)
+                    # .caption() disabled — calls cloud API per image → rate limits
+                    # Re-enable after confirming full NIM pipeline works:
+                    # .caption(endpoint_url="...", model_name="...", api_key=api_key)
+                    .embed()
+                    .vdb_upload(collection_name=COLLECTION_NAME, milvus_uri=MILVUS_URI,
+                                sparse=SPARSE, dense_dim=DENSE_DIM))
+        results, failures = ingestor.ingest(show_progress=False, return_failures=True)
+        elapsed = time.perf_counter() - t0
+        if failures:
+            for i, f in enumerate(failures):
+                msg = str(f)
+                for s in range(0, len(msg), 180): log.warning(f"    FAIL[{i}]: {msg[s:s+180]}")
+        log.info(f"    results={len(results)}  failures={len(failures)}  {elapsed:.3f}s")
+        flush()
+        return {"mode": mode, "total_ingest_sec": round(elapsed, 3),
+                "results_count": len(results), "failures_count": len(failures)}, failures
+    except ValueError as ve:
+        # Catches "No records with Embeddings to insert detected."
+        # This happens for files that extract 0 text (e.g. image-only PDFs
+        # with no embedded text layer). Treat as skipped, not crashed.
+        elapsed = time.perf_counter() - t0
+        log.warning(f"    SKIPPED (no embeddable content extracted): {ve}")
+        flush()
+        return {"mode": mode, "total_ingest_sec": round(elapsed, 3),
+                "results_count": 0, "failures_count": 0, "skipped": True}, []
+    except Exception as e:
+        elapsed = time.perf_counter() - t0
+        log.error(f"    EXCEPTION: {e}")
+        log.error(traceback.format_exc()); flush()
+        return {"mode": mode, "total_ingest_sec": round(elapsed, 3),
+                "results_count": 0, "failures_count": 1, "error": str(e)}, [e]
+
+# ── BATCH INGEST ──────────────────────────────────────────────────────────────
+def run_batch(client, files, nim_status):
+    sep()
+    mode_label = "FULL MULTIMODAL" if all(nim_status.values()) else "TEXT-ONLY"
+    log.info(f"BATCH INGEST  ->  {len(files)} files  |  {mode_label}")
+    log.info(f"  Collection: {COLLECTION_NAME}  |  Milvus: {MILVUS_URI}")
+    log.info(f"  Chunk: {CHUNK_SIZE} tok  overlap: {CHUNK_OVERLAP}  embed-dim: {DENSE_DIM}")
+    log.info(f"  NOTE: TOP_K={TOP_K} is the RAG retrieval limit per query, "
+             f"NOT the per-file chunk count.")
+    sep()
+    flush()
+
+    t0 = time.perf_counter(); timings = {}
+    ok = failed = skipped = 0
+
+    for i, fp in enumerate(files, 1):
+        fname = Path(fp).name
+        doc_t = time.perf_counter()
+        try:
+            t, _ = ingest_single_file(client, fp, i, len(files), nim_status)
+            timings[fname] = t
+            if t.get("skipped"):
+                skipped += 1
+            elif t["failures_count"] == 0:
+                ok += 1
+            else:
+                failed += 1
+        except Exception as e:
+            log.error(f"  OUTER EXCEPTION {fname}: {e}")
+            log.error(traceback.format_exc())
+            timings[fname] = {"error": str(e), "total_ingest_sec": 0, "failures_count": 1}
+            failed += 1
+        log.info(f"  -- wall: {time.perf_counter()-doc_t:.3f}s --"); flush()
+
+    batch_total = time.perf_counter() - t0
+    sep()
+    log.info("BATCH SUMMARY")
+    log.info(f"  Total: {len(files)}  OK: {ok}  Skipped: {skipped}  Failed: {failed}")
+    log.info(f"  Total time: {batch_total:.3f}s  Avg: {batch_total/max(len(files),1):.3f}s")
+    if skipped:
+        log.info(f"  Skipped files: image-only files without OCR NIM, or files with no text layer.")
+        log.info(f"  To index them: start the OCR NIM container and re-run.")
+    if ok == 0 and skipped < len(files):
+        log.error("  All non-skipped files FAILED. Check NIM health above.")
+    sep(); flush()
+    return timings, batch_total
+
+# ── MILVUS CHECK ──────────────────────────────────────────────────────────────
+def check_milvus():
+    sep(); log.info("MILVUS VERIFICATION")
+    try:
+        from pymilvus import Collection, connections, utility
+        connections.connect(uri=MILVUS_URI)
+        if not utility.has_collection(COLLECTION_NAME):
+            log.error(f"  Collection '{COLLECTION_NAME}' missing — vdb_upload failed.")
+            flush(); return False
+        col = Collection(COLLECTION_NAME); col.load()
+        n = col.num_entities
+        log.info(f"  '{COLLECTION_NAME}': {n} total chunks stored")
+        if n == 0:
+            log.error("  ZERO chunks — embed/upload failed. Check NIM health and env vars.")
+            flush(); return False
+        log.info(f"  RAG will retrieve top {TOP_K} most relevant chunks per query.")
+        flush(); return True
+    except Exception as e:
+        log.error(f"  Milvus error: {e}"); flush(); return False
+
+# ── RAG QUERIES ───────────────────────────────────────────────────────────────
+# LLM guardrail: the system prompt instructs the LLM to answer ONLY from
+# retrieved context and respond with a clear "not found" message if the
+# answer is absent — preventing hallucination and cross-document confusion.
+LLM_SYSTEM_PROMPT = """You are a document question-answering assistant.
+You have been given context chunks retrieved from a set of ingested documents.
+
+Rules you must follow:
+1. Answer ONLY using information that is explicitly present in the provided context.
+2. Do NOT use any prior knowledge, assumptions, or information outside the context.
+3. If the context does not contain the answer, respond with exactly:
+   "This information is not found in the ingested documents."
+4. Do not guess, infer, or extrapolate beyond what the context states.
+5. If the question refers to a document or topic not represented in the context,
+   state: "This topic is not covered in the documents that were indexed."
+6. Keep your answer concise and cite specific details from the context where possible."""
+
+def run_rag(api_key, questions):
+    from openai import OpenAI
+    from nv_ingest_client.util.milvus import nvingest_retrieval
+
+    sep()
+    log.info(f"RAG QUERIES  ->  {len(questions)} question(s)")
+    log.info(f"  TOP_K: {TOP_K}  |  LLM: {LLM_MODEL}")
+    sep(); flush()
+
+    llm = OpenAI(base_url=LLM_BASE_URL, api_key=api_key)
+    all_qa = []; timings = {}
+
+    for i, q in enumerate(questions, 1):
+        log.info(f"  Q{i}: {q}"); flush()
+
+        t_ret = time.perf_counter()
+        docs = nvingest_retrieval([q], COLLECTION_NAME, milvus_uri=MILVUS_URI,
+                                  hybrid=SPARSE, top_k=TOP_K)
+        ret_t = time.perf_counter() - t_ret
+
+        if docs and docs[0]:
+            ctx = "\n\n".join(d["entity"]["text"] for d in docs[0])
+            n_chunks = len(docs[0])
+        else:
+            ctx = "No relevant content found in the indexed documents."
+            n_chunks = 0
+
+        log.info(f"    Retrieval: {ret_t:.3f}s  |  chunks: {n_chunks}/{TOP_K}")
+
+        t_llm = time.perf_counter()
+        try:
+            resp = llm.chat.completions.create(
+                model=LLM_MODEL,
+                messages=[
+                    {"role": "system", "content": LLM_SYSTEM_PROMPT},
+                    {"role": "user",   "content": f"Context:\n{ctx}\n\nQuestion: {q}"}
+                ],
+                max_tokens=1024, temperature=0.1,   # low temp for factual Q&A
+            )
+            llm_t   = time.perf_counter() - t_llm
+            answer  = resp.choices[0].message.content
+            usage   = resp.usage
+            p_tok   = getattr(usage, "prompt_tokens",     0)
+            c_tok   = getattr(usage, "completion_tokens", 0)
+            tot_tok = getattr(usage, "total_tokens",      0)
+            tps     = c_tok / llm_t if llm_t > 0 else 0
+        except Exception as e:
+            log.error(f"    LLM error Q{i}: {e}")
+            llm_t = tps = p_tok = c_tok = tot_tok = 0
+            answer = "LLM call failed."
+
+        log.info(f"    LLM: {llm_t:.3f}s  |  tokens={tot_tok}  tok/s={tps:.1f}")
+        log.info(f"    Answer: {answer[:200].replace(chr(10),' ')}")
+        flush()
+
+        timings[f"Q{i}"] = {"question": q, "retrieval_sec": round(ret_t,4),
+                             "chunks_returned": n_chunks, "top_k": TOP_K,
+                             "llm_sec": round(llm_t,4), "prompt_tokens": p_tok,
+                             "completion_tokens": c_tok, "total_tokens": tot_tok,
+                             "tokens_per_sec": round(tps,2)}
+        all_qa.append({"question": q, "answer": answer, "metrics": timings[f"Q{i}"]})
+        time.sleep(1)
+
+    return timings, all_qa
+
+# ── METRICS ───────────────────────────────────────────────────────────────────
+def save_metrics(timings, batch_total, sanity_t, init_t, q_timings, nim_status):
+    m = {
+        "run_id": RUN_ID, "timestamp": datetime.now().isoformat(),
+        "python": sys.version, "nim_health": nim_status,
+        "config": {"docs_folder": DOCS_FOLDER, "collection": COLLECTION_NAME,
+                   "dense_dim": DENSE_DIM, "llm": LLM_MODEL,
+                   "chunk_size": CHUNK_SIZE, "chunk_overlap": CHUNK_OVERLAP,
+                   "top_k": TOP_K},
+        "phase_times": {"init": round(init_t,3), "sanity": round(sanity_t,3),
+                        "batch": round(batch_total,3)},
+        "per_doc": timings, "rag": q_timings,
+        "summary": {
+            "total": len(timings),
+            "ok":    sum(1 for v in timings.values()
+                         if not v.get("skipped") and not v.get("error")
+                         and v.get("failures_count", 1) == 0),
+            "skipped": sum(1 for v in timings.values() if v.get("skipped")),
+            "failed":  sum(1 for v in timings.values()
+                          if v.get("error") or v.get("failures_count", 0) > 0),
+            "wall": round(init_t + sanity_t + batch_total, 3),
+        }
+    }
+    with open(METRICS_FILE, "w", encoding="utf-8") as f: json.dump(m, f, indent=2)
+    log.info(f"  Metrics -> {METRICS_FILE}"); flush()
+    return m
+
+# ── MAIN ──────────────────────────────────────────────────────────────────────
+def main():
+    interactive = "--interactive" in sys.argv
+    g0 = time.perf_counter()
+    sep()
+    log.info("NV-INGEST 25.9.0  LIBRARY MODE  v4")
+    log.info(f"  {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}  |  "
+             f"Python {sys.version.split()[0]}  |  "
+             f"{'INTERACTIVE' if interactive else 'PREDEFINED'} mode")
+    log.info(f"  Log  -> {os.path.abspath(LOG_FILE)}")
+    sep(); flush()
+
+    questions = collect_questions() if interactive else DEFAULT_QUESTIONS
+    if not interactive:
+        log.info(f"  {len(questions)} predefined question(s)."); flush()
+
+    api_key    = setup_env()
+    files      = find_files()
+    client, it = start_pipeline()
+    nim_status = check_nims()
+    sanity_t   = sanity_check(client, files[0])
+    timings, bt = run_batch(client, files, nim_status)
+
+    if not check_milvus():
+        log.error("Milvus empty — skipping RAG."); q_timings, all_qa = {}, []
+    else:
+        q_timings, all_qa = run_rag(api_key, questions)
+
+    with open(ANSWERS_FILE, "w", encoding="utf-8") as f:
+        json.dump(all_qa, f, indent=2, ensure_ascii=False)
+    log.info(f"  Answers -> {ANSWERS_FILE}"); flush()
+
+    m = save_metrics(timings, bt, sanity_t, it, q_timings, nim_status)
+    sep()
+    log.info("FINAL SUMMARY")
+    sep()
+    log.info(f"  Run ID   : {RUN_ID}")
+    log.info(f"  Docs     : {m['summary']['total']}  "
+             f"OK={m['summary']['ok']}  "
+             f"Skipped={m['summary']['skipped']}  "
+             f"Failed={m['summary']['failed']}")
+    log.info(f"  Wall     : {time.perf_counter()-g0:.1f}s total  "
+             f"(init {it:.1f}s + sanity {sanity_t:.1f}s + batch {bt:.1f}s)")
+    log.info(f"  Log      -> {LOG_FILE}")
+    log.info(f"  Metrics  -> {METRICS_FILE}")
+    log.info(f"  Answers  -> {ANSWERS_FILE}")
+    sep(); flush()
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        log.warning("Interrupted."); flush(); sys.exit(1)
+    except Exception as e:
+        log.error(f"FATAL: {e}"); log.error(traceback.format_exc()); flush(); sys.exit(1)
