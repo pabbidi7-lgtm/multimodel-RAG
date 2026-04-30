@@ -239,3 +239,39 @@ for q in queries:
     print(f"A: {ans.choices[0].message.content.strip()}")
     print("-" * 60)
     
+
+
+
+
+
+Hi Sneha,
+
+I’m really glad I got the chance to work with you and Sharanya. It’s been such a valuable experience, and I’ve learned a lot during this time.
+
+I truly appreciate the way both of you review things and discuss different approaches. The subtle way you point out mistakes really made me think deeper and look at problems from multiple angles—it pushed me to improve every day.
+
+I hope I was able to meet your expectations under your guidance. Honestly, time went by so quickly, and I genuinely wish I could continue working with your team because of how much there is to learn.
+
+I’m very grateful for the opportunity LTM provided, and especially thankful to both of you for consistently investing your time and effort in helping me grow. Without your guidance, I wouldn’t have developed this way of thinking while building solutions.
+
+I do wish I had a bit more time to explore things further—like running the NV Ingest full version on GPU and understanding how the Nemotron models work in depth, as well as learning more about the iScan application. Unfortunately, time wasn’t sufficient, but I’ll definitely try to explore these on my own.
+
+I’ll continue to upskill and carry forward everything I’ve learned here.
+
+Thank you once again, Sneha. It truly means a lot.
+
+
+
+
+
+Hi Sharanya, good morning,
+
+As this is the last day of my internship, I just wanted to thank you for all your support. I’m really glad I got the opportunity to work under you and Sneha.
+
+From your end, you helped me a lot. Even with your busy schedule, you always made time to connect with me and clarify my doubts, which I truly appreciate.
+
+I know I still have a lot to learn, but I’ve gained so much from you—especially in terms of coding, referring to documentation, and implementing solutions. All of that has been really valuable for me.
+
+It has genuinely been a great experience working with both of you. I’ll make sure to take your feedback seriously and continue improving going forward.
+
+Thank you very much, Sharanya, for your guidance and support—it really means a lot.
